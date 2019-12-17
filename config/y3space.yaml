@@ -1,5 +1,6 @@
-port: '/dev/imu'
-baudrate: 115200
+port: '/dev/ttyACM0'
+baudrate: 921600
 timeout: 60000
-mode: 'relative'  # should be 'relative' or 'absolute'
+mode: 'absolute'  # should be 'relative' or 'absolute'
 frame: 'imu_link'
+frequency: 100

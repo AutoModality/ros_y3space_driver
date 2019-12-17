@@ -41,6 +41,18 @@ void SerialInterface::serialConnect()
 	}
 }
 
+void SerialInterface::serialDisConnect()
+{
+	try
+	{
+  		m_connection->close();
+	}
+	catch(IOException &e)
+	{
+  		std::string ioerror = e.what();
+ 	}
+}
+
 void SerialInterface::serialWrite(uint8_t *buf, size_t len)
 {
     size_t written = this->m_connection->write(buf, len);

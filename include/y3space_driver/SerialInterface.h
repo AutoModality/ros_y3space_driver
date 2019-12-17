@@ -28,6 +28,11 @@ public:
     //!
     virtual void serialConnect();
     //!
+    //! Destroy serial connection
+    //!
+    virtual void serialDisConnect();
+
+    //!
     //! Write to byte serial
     //!
     virtual void serialWrite(uint8_t *buf, size_t len);

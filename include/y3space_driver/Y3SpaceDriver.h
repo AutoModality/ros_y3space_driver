@@ -3,8 +3,13 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <geometry_msgs/Vector3Stamped.h>
 #include <std_msgs/Float64.h>
 #include <SerialInterface.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <math.h>
 
 
 //! \brief Yost Labs 3-Space ROS Driver Class
@@ -14,7 +19,8 @@ public:
     //!
     //! Constructor
     //!
-    Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::string port, int baudrate, int timeout, std::string mode, std::string frame);
+    Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const std::string &port,
+    		int baudrate, int timeout, const std::string &mode, const std::string &frame);
     //!
     //! Destructor
     //!
@@ -63,8 +69,16 @@ private:
     ros::NodeHandle m_pnh;    ///< Private Nodehandle for use with Serial Interface
     ros::Publisher m_imuPub;  ///< Publisher for IMU messages
     ros::Publisher m_tempPub; ///< Publisher for temperature messages
+    ros::Publisher m_rpyPub; ///<Publisher for IMU RPY messages>
     std::string m_mode;       ///< String indicating the desired driver mode
     std::string m_frame;      ///< The frame ID to broadcast to tf
+
+    int imu_frequency_;
+
+    std::string getFrequencyMsg(int frequency);
+    void getParams();
+    geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
+    double getDegree(double rad);
     static const std::string logger; ///< Logger tag
     
     static const std::string MODE_ABSOLUTE;
@@ -110,17 +124,20 @@ private:
     // Uncorrected Raw Data Commands
     static constexpr auto GET_ALL_RAW_COMPONENT_SENSOR_DATA = ":64\n";
     static constexpr auto GET_RAW_GYRO_RATE                 = ":65\n";
-    static constexpr auto GET_RAW_ACCEL_DATA                = ":66\n";
+    static constexpr auto GET_RAW_ACCEL_DATA                = ";66\n";
     static constexpr auto GET_RAW_COMPASS_DATA              = ":67\n";
 
     // Streaming Commands
+    //according to http://yeitechnology.freshdesk.com/support/discussions/topics/1000056170 and the user manual, timestamp command is the following
+    static constexpr auto SET_TIME_STAMP_REQUEST				= ";221,2\n";
+    static constexpr auto GET_HEADER_SETTING					= ":222\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER_TEMP        = ":80,1,43,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER_QUATERNION  = ":80,1,0,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION_EULER  = ":80,0,1,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER             = ":80,1,255,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION        = ":80,0,255,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION_CORRECTED_GYRO_ACCELERATION_LINEAR_IN_GLOBAL = ":80,0,38,41,255,255,255,255,255\n";
-
+    static constexpr auto SET_STREAMING_SLOTS_AUTOMODALITY	= ":80,6,38,39,41,44,255,255,255\n";
     // ROS IMU Configurations -----------------------------------------------------------------------------
     /*
     * Most of the above commands are standard command expressions
@@ -139,7 +156,7 @@ private:
     static constexpr auto SET_STREAMING_TIMING_5000_MS          = ":82,5000000,0,0\n";
     static constexpr auto GET_STREAMING_TIMING                  = ":83\n";
     static constexpr auto GET_STREAMING_BATCH                   = ":84\n";
-    static constexpr auto START_STREAMING                       = ":85\n";
+    static constexpr auto START_STREAMING                       = ";85\n";
     static constexpr auto STOP_STREAMING                        = ":86\n";
     static constexpr auto UPDATE_CURRENT_TIMESTAMP              = ":95\n";
 
