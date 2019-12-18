@@ -65,6 +65,8 @@ public:
     //!
     const std::string& getSerialPort() { return m_port; }
 
+    void flushSerial();
+
 private:
     //!
     //! name of the devices port

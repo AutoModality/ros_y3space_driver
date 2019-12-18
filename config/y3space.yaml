@@ -1,6 +1,7 @@
 port: '/dev/ttyACM0'
 baudrate: 921600
-timeout: 60000
+timeout: 3000
 mode: 'absolute'  # should be 'relative' or 'absolute'
 frame: 'imu_link'
-frequency: 100
+frequency: 300
+debug: false

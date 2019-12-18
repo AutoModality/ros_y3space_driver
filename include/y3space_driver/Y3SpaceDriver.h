@@ -9,6 +9,8 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf/LinearMath/Quaternion.h>
+#include <tf/transform_datatypes.h>
 #include <math.h>
 
 
@@ -72,12 +74,15 @@ private:
     ros::Publisher m_rpyPub; ///<Publisher for IMU RPY messages>
     std::string m_mode;       ///< String indicating the desired driver mode
     std::string m_frame;      ///< The frame ID to broadcast to tf
-
+    bool debug_;
     int imu_frequency_;
 
     std::string getFrequencyMsg(int frequency);
     void getParams();
     geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
+    geometry_msgs::Quaternion getQuaternion(double roll, double pitch, double yaw);
+    geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
+
     double getDegree(double rad);
     static const std::string logger; ///< Logger tag
     
@@ -90,6 +95,8 @@ private:
      * firmware. Unless otherwise noted, these are derived directly
      * from the 3-Space API
      */
+
+    //static const double GRAVITY = 9.8;
 
     // Orientation Sensor Data Commands
     static constexpr auto GET_TARED_ORIENTATION_AS_QUATERNION        = ":0\n";
@@ -137,7 +144,7 @@ private:
     static constexpr auto SET_STREAMING_SLOTS_EULER             = ":80,1,255,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION        = ":80,0,255,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION_CORRECTED_GYRO_ACCELERATION_LINEAR_IN_GLOBAL = ":80,0,38,41,255,255,255,255,255\n";
-    static constexpr auto SET_STREAMING_SLOTS_AUTOMODALITY	= ":80,6,38,39,41,44,255,255,255\n";
+    static constexpr auto SET_STREAMING_SLOTS_AUTOMODALITY	= ":80,6,7,38,39,40,41,255,255\n";
     // ROS IMU Configurations -----------------------------------------------------------------------------
     /*
     * Most of the above commands are standard command expressions
@@ -146,8 +153,8 @@ private:
     *
     * TODO: Figure out if you can get the covariance
     */
-    static constexpr auto SET_STREAMING_SLOTS_ROS_IMU_RELATIVE  = ":80,0,38,41,43,255,255,255,255\n";
-    static constexpr auto SET_STREAMING_SLOTS_ROS_IMU_ABSOLUTE  = ":80,6,38,41,43,255,255,255,255\n";
+    static constexpr auto SET_STREAMING_SLOTS_ROS_IMU_RELATIVE  = ";80,0,38,41,43,255,255,255,255\n";
+    static constexpr auto SET_STREAMING_SLOTS_ROS_IMU_ABSOLUTE  = ";80,6,38,41,43,255,255,255,255\n";
     // ----------------------------------------------------------------------------------------------------
 
     static constexpr auto GET_STREAMING_SLOTS                   = ":81\n";
@@ -180,6 +187,8 @@ private:
     static constexpr auto SET_MI_MODE_DISABLED             = ":112,0\n";
     static constexpr auto BEGIN_MI_MODE_FIELD_CALIBRATION  = ":114\n";
     static constexpr auto SET_AXIS_DIRECTIONS_ENU          = ":116,8\n";
+    static constexpr auto SET_AXIS_DIRECTIONS_FLU          = ":116,19\n";
+    static constexpr auto SET_AXIS_DIRECTIONS_RFU          = ":116,1\n";
     static constexpr auto SET_AXIS_DIRECTIONS_DEFAULT      = ":116,5\n";
 
     // Calibration Commands

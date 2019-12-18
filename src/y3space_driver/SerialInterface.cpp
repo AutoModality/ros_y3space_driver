@@ -105,3 +105,8 @@ size_t SerialInterface::available()
 {
     return this->m_connection->available();
 }
+
+void SerialInterface::flushSerial()
+{
+	m_connection->flush();
+}

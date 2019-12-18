@@ -11,19 +11,21 @@ Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const st
     m_pnh(pnh),
     m_nh(nh),
     m_mode(mode),
-    m_frame(frame)
+    m_frame(frame),
+	debug_(false)
 {
 	getParams();
 
     this->serialConnect();
-    this->m_imuPub = this->m_nh.advertise<sensor_msgs::Imu>("/imu/filtered", 10);
-    this->m_tempPub = this->m_nh.advertise<std_msgs::Float64>("/imu/temp", 10);
-    this->m_rpyPub = this->m_nh.advertise<geometry_msgs::Vector3Stamped>("/imu/rpy", 10);
+    this->m_imuPub = this->m_nh.advertise<sensor_msgs::Imu>("/mavros/imu/data", 10);
+    //this->m_tempPub = this->m_nh.advertise<std_msgs::Float64>("/imu/temp", 10);
+    //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::Vector3Stamped>("/imu/rpy", 10);
 }
 
 void Y3SpaceDriver::getParams()
 {
 	m_pnh.param<int>("frequency", imu_frequency_, 400);
+	m_pnh.param<bool>("debug", debug_, false);
 }
 
 Y3SpaceDriver::~Y3SpaceDriver()
@@ -168,8 +170,8 @@ const std::string Y3SpaceDriver::getMIMode()
 std::string Y3SpaceDriver::getFrequencyMsg(int frequency)
 {
 	float period = 1000000.0/(float)frequency;
-	std::string msg = ":82,"+std::to_string(period)+",0,0\n";
-	//std::cout << msg << std::endl;
+	std::string msg = ":82,"+std::to_string((int)period)+",0,0\n";
+	std::cout << msg << std::endl;
 	return msg;
 }
 
@@ -184,10 +186,30 @@ void Y3SpaceDriver::run()
 
     this->startGyroCalibration();
     this->getSoftwareVersion();
+
+    //AXIS DIRECTION
+    this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
+    this->serialReadLine();
     this->getAxisDirection();
+
+    //Request for Particular Frequency
+    this->serialWriteString(getFrequencyMsg(imu_frequency_).c_str());
+    ROS_INFO("Get Streaming Frequency: %s", this->serialReadLine().c_str());
+
+
+    //Set Streaming Slot
+    this->serialWriteString(SET_STREAMING_SLOTS_AUTOMODALITY);
+    this->serialWriteString(GET_STREAMING_SLOTS);
+    ROS_INFO("GET_STREAMING_SLOTS POST CONFIGURATION: %s", this->serialReadLine().c_str());
+
+
+    //Ask for timestamp
+    this->serialWriteString(SET_TIME_STAMP_REQUEST);
+    ROS_INFO("SET_TIME_STAMP_REQUEST: %s", this->serialReadLine().c_str());
+
     this->getCalibMode();
     this->getMIMode();
-    if (m_mode == MODE_ABSOLUTE)
+    /*if (m_mode == MODE_ABSOLUTE)
     {
         ROS_INFO_STREAM(this->logger << "Using absolute driver stream configuration");
         this->serialWriteString(SET_STREAMING_SLOTS_ROS_IMU_ABSOLUTE);
@@ -201,44 +223,56 @@ void Y3SpaceDriver::run()
     {
         ROS_WARN_STREAM(this->logger << "Unknown driver mode set... Defaulting to relative");
         this->serialWriteString(SET_STREAMING_SLOTS_ROS_IMU_RELATIVE);
-    }
-    //Ask for timestamp
-    this->serialWriteString(SET_TIME_STAMP_REQUEST);
+    }*/
+
+
     //this->serialWriteString(GET_HEADER_SETTING);
     //ROS_INFO("2. GET_HEADER_SETTING: %s", this->serialReadLine().c_str());
     //this->serialWriteString(GET_RAW_ACCEL_DATA);
     //ROS_INFO("GET_RAW_ACCEL_DATA: %s", this->serialReadLine().c_str());
-    this->serialWriteString(TARE_WITH_CURRENT_ORIENTATION);
-    this->serialWriteString(TARE_WITH_CURRENT_QUATERNION);
-    this->serialWriteString(getFrequencyMsg(imu_frequency_).c_str());
+    //this->serialWriteString(TARE_WITH_CURRENT_ORIENTATION);
+    //this->serialWriteString(TARE_WITH_CURRENT_QUATERNION);
 
 
-    this->serialWriteString(GET_STREAMING_SLOTS);
-    ROS_INFO("GET_STREAMING_SLOTS: %s", this->serialReadLine().c_str());
 
-    this->serialWriteString(SET_STREAMING_SLOTS_AUTOMODALITY);
-    this->serialWriteString(GET_STREAMING_SLOTS);
-    ROS_INFO("GET_STREAMING_SLOTS: %s", this->serialReadLine().c_str());
+
+    //this->serialWriteString(GET_STREAMING_SLOTS);
+    //ROS_INFO("GET_STREAMING_SLOTS PRE CONFIGURATION: %s", this->serialReadLine().c_str());
 
 
 
     //this->serialWriteString(SET_EULER_ANGLE_DECOMP_ORDER_XYZ);
-    this->serialWriteString(GET_EULER_DECOMPOSTION_ORDER);
-    ROS_INFO("GET_EULER_DECOMPOSTION_ORDER: %s", this->serialReadLine().c_str());
+    //this->serialWriteString(GET_EULER_DECOMPOSTION_ORDER);
+    //ROS_INFO("GET_EULER_DECOMPOSTION_ORDER: %s", this->serialReadLine().c_str());
+    //ROS_INFO("GET_EULER_DECOMPOSTION_ORDER: %s", this->serialReadLine().c_str());
+
+
+    this->flushSerial();
+
 
     this->serialWriteString(START_STREAMING);
     ROS_INFO_STREAM(this->logger << "Ready\n");
-  
+
+    //Complete HACK to make sure that the buffer is empty
+    for(int k = 0; k < 10; k++)
+    {
+    	this->serialReadLine();
+    }
 
 
     ros::Rate rate(1000);
     int line = -2;
+    int expected_lines_ = 6;
     while(ros::ok())
     {
         while(this->available() > 0)
         {
             std::string buf = this->serialReadLine();
-            ROS_INFO("BUFFER[%d]: %s",line, buf.c_str());
+            /*if(line == 3)
+            {
+                ROS_INFO("BUFFER[%d]: %s",line, buf.c_str());
+
+            }*/
 
             std::string parse;
             std::stringstream ss(buf);
@@ -277,12 +311,34 @@ void Y3SpaceDriver::run()
             	}
 
             	// Should stop reading when line == number of tracked streams
-            	if(line == 5)
+            	if(line == expected_lines_)
             	{
-            		/*ROS_INFO("parsedVals size: %d", (int)parsedVals.size());
-            		int cnt = 0;
-            		for_each(parsedVals.begin(), parsedVals.end(), [&](double x){ROS_INFO("Value[%d] = %f", cnt++, x);});
-            		ROS_INFO("---------------------------------");*/
+            		int j = 0;
+            		for_each(parsedVals.begin(), parsedVals.end(), [&](double x){if(x / 1000.0 > 10) {j++;}});
+            		if(j > 1)
+            		{
+            			ROS_INFO("something went wrong. there are more than one timestamp in here. recalculating the offset...");
+            			if(debug_)
+            			{
+            				ROS_INFO("parsedVals size: %d", (int)parsedVals.size());
+            				int cnt = 0;
+            				for_each(parsedVals.begin(), parsedVals.end(), [&](double x){ROS_INFO("Value[%d] = %f", cnt++, x);});
+            				ROS_INFO("---------------------------------");
+            			}
+            			parsedVals.clear();
+            			line=-1;
+            			continue;
+            		}
+
+
+            		if(debug_)
+            		{
+            			ROS_INFO("parsedVals size: %d", (int)parsedVals.size());
+            			int cnt = 0;
+            			for_each(parsedVals.begin(), parsedVals.end(), [&](double x){ROS_INFO("Value[%d] = %f", cnt++, x);});
+            			ROS_INFO("---------------------------------");
+            		}
+
 
             		// Reset line tracker
             		line = 0;
@@ -290,30 +346,30 @@ void Y3SpaceDriver::run()
             		/* for 6,38,39,41,44
             		 *	Array Structure:
             		 *	idx 0 --> timestamp
-            		 *  idx 1-4 --> untared orientation as quaternion
-            		 * 	idx 5-7 --> corrected gyroscope vector
-            		 * 	idx 8-10 --> corrected accelerometer vector
-            		 * 	idx 11-13 --> corrected linear acceleration
-            		 * 	idx 14 --> temp
+            		 *  idx 1-4 --> untared orientation as Quaternion 6
+            		 * 	idx 5-7 --> untared orientation as Euler Angles 7
+            		 * 	idx 8-10 --> corrected gyroscope vector 38
+            		 * 	idx 11-13 --> corrected accelerometer vector 39
+            		 * 	idx 14-16 --> corrected compass vector 40
+            		 * 	idx 17-19 --> corrected linear acceleration 41
             		 */
 
             		// Prepare IMU message
             		imuMsg.header.stamp           = ros::Time::now();
-            		imuRPY.header.stamp 		  = imuMsg.header.stamp;
-            		imuMsg.header.frame_id        = m_frame;
-            		imuRPY.header.frame_id        = imuMsg.header.frame_id;
-            		imuMsg.orientation.x          = parsedVals[3];
-            		imuMsg.orientation.y          = parsedVals[1];
-            		imuMsg.orientation.z          = parsedVals[2];
+            		imuMsg.header.frame_id        = "body_FLU";
+
+            		imuMsg.orientation.x          = parsedVals[1];
+            		imuMsg.orientation.y          = parsedVals[2];
+            		imuMsg.orientation.z          = parsedVals[3];
             		imuMsg.orientation.w          = parsedVals[4];
 
-            		imuMsg.angular_velocity.x     = parsedVals[5];
-            		imuMsg.angular_velocity.y     = parsedVals[6];
-            		imuMsg.angular_velocity.z     = parsedVals[7];
+            		imuMsg.angular_velocity.x     = parsedVals[8];
+            		imuMsg.angular_velocity.y     = parsedVals[9];
+            		imuMsg.angular_velocity.z     = parsedVals[10];
 
-            		imuMsg.linear_acceleration.x  = parsedVals[11];
-            		imuMsg.linear_acceleration.y  = parsedVals[12];
-            		imuMsg.linear_acceleration.z  = parsedVals[13];
+            		imuMsg.linear_acceleration.x  = 9.8*parsedVals[11];
+            		imuMsg.linear_acceleration.y  = 9.8*parsedVals[12];
+            		imuMsg.linear_acceleration.z  = 9.8*parsedVals[13];
 
             		// Prepare temperature messages
 					tempMsg.data = parsedVals[14];
@@ -321,15 +377,23 @@ void Y3SpaceDriver::run()
             		// Clear parsed values
 					parsedVals.clear();
 
-            		imuRPY.vector = getRPY(imuMsg.orientation);
+            		/*imuRPY.vector = getRPY(imuMsg.orientation);
 
             		imuRPY.vector.x = getDegree(imuRPY.vector.x);
             		imuRPY.vector.y = getDegree(imuRPY.vector.y);
-            		imuRPY.vector.z = getDegree(imuRPY.vector.z);
+            		imuRPY.vector.z = getDegree(imuRPY.vector.z);*/
+
+					//imuRPY.vector.x = getDegree((double)parsedVals[5]);
+					//imuRPY.vector.y = getDegree((double)parsedVals[6]);
+					//imuRPY.vector.z = getDegree((double)parsedVals[7]);
+					//geometry_msgs::Quaternion q = getQuaternion((double)parsedVals[5],(double)parsedVals[6],(double)parsedVals[7]);
+					//std::cout << q << std::endl;
+
+					imuMsg.orientation = toENU(imuMsg.orientation);
 
             		this->m_imuPub.publish(imuMsg);
-            		this->m_tempPub.publish(tempMsg);
-            		this->m_rpyPub.publish(imuRPY);
+            		//this->m_tempPub.publish(tempMsg);
+            		//this->m_rpyPub.publish(imuRPY);
             	}
             }
 
@@ -355,6 +419,27 @@ geometry_msgs::Vector3 Y3SpaceDriver::getRPY(geometry_msgs::Quaternion &q)
 	tf2::Matrix3x3 m(tfq);
 	m.getRPY(vect.x, vect.y, vect.z);
 	return vect;
+}
+
+geometry_msgs::Quaternion Y3SpaceDriver::getQuaternion(double roll, double pitch, double yaw)
+{
+	tf::Quaternion q;
+	q.setRPY(roll,pitch,yaw);
+	geometry_msgs::Quaternion q_msg;
+	quaternionTFToMsg(q, q_msg);
+	return q_msg;
+}
+
+geometry_msgs::Quaternion Y3SpaceDriver::toENU(geometry_msgs::Quaternion q)
+{
+	tf::Quaternion q_FLU(q.x, q.y, q.z, q.w);
+	tf::Quaternion q_TF(0.0, 0.0, 0.707, 0.707);
+	tf::Quaternion q_ENU = q_TF * q_FLU;
+
+	geometry_msgs::Quaternion q_MSG;
+	quaternionTFToMsg(q_ENU, q_MSG);
+
+	return q_MSG;
 }
 
 double Y3SpaceDriver::getDegree(double rad)
