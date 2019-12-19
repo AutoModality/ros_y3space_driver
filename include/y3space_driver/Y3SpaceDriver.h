@@ -11,6 +11,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_datatypes.h>
+#include <chrono>
+#include <ctime>
 #include <math.h>
 
 
@@ -77,6 +79,8 @@ private:
     bool debug_;
     int imu_frequency_;
 
+    std::pair<ros::Time, ros::Time> reference_time_;
+
     std::string getFrequencyMsg(int frequency);
     void getParams();
     geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
@@ -84,6 +88,15 @@ private:
     geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
 
     double getDegree(double rad);
+    void setFrequency();
+    void setStreamingSlots();
+    void setHeader();
+    void setSystemTime();
+    void setAxisDirection();
+    ros::Time getYostRosTime(long sensor_time);
+    ros::Time toRosTime(double sensor_time);
+    ros::Time getReadingTime(double sensor_time);
+
     static const std::string logger; ///< Logger tag
     
     static const std::string MODE_ABSOLUTE;
