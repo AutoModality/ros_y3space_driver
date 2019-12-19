@@ -269,7 +269,10 @@ void Y3SpaceDriver::run()
     }
 
 
-    ros::Rate rate(500);
+    int rate_freq = (imu_frequency_ * 2) - 100;
+    ROS_INFO("RATE: %d", rate_freq);
+    ros::Rate rate(rate_freq);
+
     int line = -2;
     int expected_lines_ = 6;
     while(ros::ok())
@@ -318,7 +321,12 @@ void Y3SpaceDriver::run()
             }
             if(line > -1)
             {
+            	if(line == 0)
+            	{
+            		imuMsg.header.stamp = ros::Time::now();
+            	}
             	line += 1;
+
             	// Parse data from the line
             	while (ss >> i)
             	{
@@ -383,9 +391,11 @@ void Y3SpaceDriver::run()
 
 
             		// Prepare IMU message
-            		ros::Time sensor_time = getReadingTime(parsedVals[0]);
-            		imuMsg.header.stamp           = sensor_time;
-            		//ROS_INFO("Time Difference: %f", ros::Time::now().toSec() - sensor_time.toSec());
+            		//ros::Time sensor_time = getReadingTime(parsedVals[0]);
+            		//imuMsg.header.stamp           = sensor_time;
+            		//double time_diff = ros::Time::now().toSec() - imuMsg.header.stamp.toSec();
+            		//ROS_INFO("Time Diff: %f", time_diff);
+
             		imuMsg.header.frame_id        = "body_FLU";
 
             		imuMsg.orientation.x          = parsedVals[1];
