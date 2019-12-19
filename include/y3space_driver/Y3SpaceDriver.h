@@ -66,6 +66,9 @@ public:
     //! \param on True to set , False to Unset
     //!
     void setMIMode(bool on);
+    sensor_msgs::Imu &getImuMessage();
+
+    void initDevice();
 
 private:
     // ROS Member Variables
@@ -76,6 +79,7 @@ private:
     ros::Publisher m_rpyPub; ///<Publisher for IMU RPY messages>
     std::string m_mode;       ///< String indicating the desired driver mode
     std::string m_frame;      ///< The frame ID to broadcast to tf
+    sensor_msgs::Imu imu_msg_;
     bool debug_;
     int imu_frequency_;
 
@@ -119,6 +123,7 @@ private:
     static constexpr auto GET_TARED_ORIENTATION_AS_TWO_VECTOR        = ":4\n";
     static constexpr auto GET_DIFFERENCE_QUATERNION                  = ":5\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_QUATERNION      = ":6\n";
+    static constexpr auto GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER = ";6\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_EULER_ANGLES    = ":7\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_ROTATION_MATRIX = ":8\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_AXIS_ANGLE      = ":9\n";

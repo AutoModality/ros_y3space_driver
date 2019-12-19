@@ -17,9 +17,31 @@ Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const st
 	getParams();
 
     this->serialConnect();
-    this->m_imuPub = this->m_nh.advertise<sensor_msgs::Imu>("/mavros/imu/data", 10);
+
+    initDevice();
+    //this->m_imuPub = this->m_nh.advertise<sensor_msgs::Imu>("/mavros/imu/data", 10);
     //this->m_tempPub = this->m_nh.advertise<std_msgs::Float64>("/imu/temp", 10);
     //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::Vector3Stamped>("/imu/rpy", 10);
+}
+
+sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
+{
+	//We assume the device is initialized
+	//Getting untared orientation as Quaternion
+	this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
+	std::string quaternion_msg = this->serialReadLine();
+
+
+	this->serialWriteString(GET_CORRECTED_GYRO_RATE);
+	std::string gyro_msg = this->serialReadLine();
+
+	this->serialWriteString(GET_CORRECTED_ACCELEROMETER_VECTOR);
+	std::string accel_msg = this->serialReadLine();
+
+
+	//ROS_INFO("quaternion_msg: %s", quaternion_msg.c_str());
+
+	return imu_msg_;
 }
 
 void Y3SpaceDriver::getParams()
@@ -141,6 +163,31 @@ void Y3SpaceDriver::setMIMode(bool on)
     }
 }
 
+
+/*
+ * **********************************************
+ * Device Setup
+ * ..............................................
+ */
+void Y3SpaceDriver::initDevice()
+{
+	this->startGyroCalibration();
+	this->getSoftwareVersion();
+
+
+	this->setAxisDirection();
+
+	this->getAxisDirection();
+
+	this->setFrequency();
+	this->setStreamingSlots();
+	this->setHeader();
+
+	this->getCalibMode();
+	this->getMIMode();
+	this->flushSerial();
+}
+
 const std::string Y3SpaceDriver::getCalibMode()
 {
     this->serialWriteString(GET_CALIB_MODE);
@@ -238,24 +285,7 @@ void Y3SpaceDriver::run()
     geometry_msgs::Vector3Stamped imuRPY;
     std_msgs::Float64 tempMsg;
 
-
-    this->startGyroCalibration();
-    this->getSoftwareVersion();
-
-
-    this->setAxisDirection();
-
-    this->getAxisDirection();
-
-    this->setFrequency();
-    this->setStreamingSlots();
-    this->setHeader();
-
-    this->getCalibMode();
-    this->getMIMode();
-    this->flushSerial();
-
-
+    initDevice();
 
 
     this->serialWriteString(START_STREAMING);
