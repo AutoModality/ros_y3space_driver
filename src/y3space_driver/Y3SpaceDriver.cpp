@@ -27,6 +27,33 @@ void Y3SpaceDriver::getParams()
 	m_pnh.param<int>("frequency", imu_frequency_, 400);
 	m_pnh.param<bool>("debug", debug_, false);
 }
+void Y3SpaceDriver::setSystemTime()
+{
+	/*time_t now = time(0);
+	long current_system_time = now;
+
+	std::string time_update_msg = ":95,"+ std::to_string(current_system_time) +"\n";
+	this->serialWriteString(time_update_msg);
+
+	std::cout << time_update_msg << std::endl;
+
+	ROS_INFO("Y3SpaceDriver: System Time: %s", this->serialReadLine().c_str());*/
+	/*struct timeval start;
+	gettimeofday(&start, NULL);
+	long long milliseconds = (start.tv_sec*1000000LL + start.tv_usec) % 1000000000;
+	std::string time_update_msg = ":95,"+ std::to_string(milliseconds) +"\n";
+	std::cout << "SET TIME MSG: " << time_update_msg << std::endl;*/
+
+}
+
+ros::Time Y3SpaceDriver::getYostRosTime(long sensor_time)
+{
+	ros::Time result;
+	result.nsec = sensor_time % 1000000;
+	result.sec = sensor_time / 1000000;
+
+	return result;
+}
 
 Y3SpaceDriver::~Y3SpaceDriver()
 {
@@ -175,9 +202,37 @@ std::string Y3SpaceDriver::getFrequencyMsg(int frequency)
 	return msg;
 }
 
+void Y3SpaceDriver::setFrequency()
+{
+	this->serialWriteString(getFrequencyMsg(imu_frequency_).c_str());
+	ROS_INFO("Y3SpaceDriver: Streaming Frequency: %s", this->serialReadLine().c_str());
+}
+
+void Y3SpaceDriver::setHeader()
+{
+	//Ask for timestamp
+	this->serialWriteString(SET_TIME_STAMP_REQUEST);
+	ROS_INFO("SET_TIME_STAMP_REQUEST: %s", this->serialReadLine().c_str());
+}
+
+void Y3SpaceDriver::setStreamingSlots()
+{
+	//Set Streaming Slot
+	this->serialWriteString(SET_STREAMING_SLOTS_AUTOMODALITY);
+	this->serialWriteString(GET_STREAMING_SLOTS);
+	ROS_INFO("Y3SpaceDriver: GET_STREAMING_SLOTS POST CONFIGURATION: %s", this->serialReadLine().c_str());
+}
+
+void Y3SpaceDriver::setAxisDirection()
+{
+	//AXIS DIRECTION
+	this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
+//	this->serialReadLine();
+}
 //! Run the serial sync
 void Y3SpaceDriver::run()
 {
+	bool devices_are_synched = false;
     std::vector<double> parsedVals;
     sensor_msgs::Imu imuMsg;
     geometry_msgs::Vector3Stamped imuRPY;
@@ -187,70 +242,24 @@ void Y3SpaceDriver::run()
     this->startGyroCalibration();
     this->getSoftwareVersion();
 
-    //AXIS DIRECTION
-    this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
-    this->serialReadLine();
+
+    this->setAxisDirection();
+
     this->getAxisDirection();
 
-    //Request for Particular Frequency
-    this->serialWriteString(getFrequencyMsg(imu_frequency_).c_str());
-    ROS_INFO("Get Streaming Frequency: %s", this->serialReadLine().c_str());
-
-
-    //Set Streaming Slot
-    this->serialWriteString(SET_STREAMING_SLOTS_AUTOMODALITY);
-    this->serialWriteString(GET_STREAMING_SLOTS);
-    ROS_INFO("GET_STREAMING_SLOTS POST CONFIGURATION: %s", this->serialReadLine().c_str());
-
-
-    //Ask for timestamp
-    this->serialWriteString(SET_TIME_STAMP_REQUEST);
-    ROS_INFO("SET_TIME_STAMP_REQUEST: %s", this->serialReadLine().c_str());
+    this->setFrequency();
+    this->setStreamingSlots();
+    this->setHeader();
 
     this->getCalibMode();
     this->getMIMode();
-    /*if (m_mode == MODE_ABSOLUTE)
-    {
-        ROS_INFO_STREAM(this->logger << "Using absolute driver stream configuration");
-        this->serialWriteString(SET_STREAMING_SLOTS_ROS_IMU_ABSOLUTE);
-    }
-    else if (m_mode == MODE_RELATIVE)
-    {
-        ROS_INFO_STREAM(this->logger << "Using relative driver stream configuration");
-        this->serialWriteString(SET_STREAMING_SLOTS_ROS_IMU_RELATIVE);
-    }
-    else
-    {
-        ROS_WARN_STREAM(this->logger << "Unknown driver mode set... Defaulting to relative");
-        this->serialWriteString(SET_STREAMING_SLOTS_ROS_IMU_RELATIVE);
-    }*/
-
-
-    //this->serialWriteString(GET_HEADER_SETTING);
-    //ROS_INFO("2. GET_HEADER_SETTING: %s", this->serialReadLine().c_str());
-    //this->serialWriteString(GET_RAW_ACCEL_DATA);
-    //ROS_INFO("GET_RAW_ACCEL_DATA: %s", this->serialReadLine().c_str());
-    //this->serialWriteString(TARE_WITH_CURRENT_ORIENTATION);
-    //this->serialWriteString(TARE_WITH_CURRENT_QUATERNION);
-
-
-
-
-    //this->serialWriteString(GET_STREAMING_SLOTS);
-    //ROS_INFO("GET_STREAMING_SLOTS PRE CONFIGURATION: %s", this->serialReadLine().c_str());
-
-
-
-    //this->serialWriteString(SET_EULER_ANGLE_DECOMP_ORDER_XYZ);
-    //this->serialWriteString(GET_EULER_DECOMPOSTION_ORDER);
-    //ROS_INFO("GET_EULER_DECOMPOSTION_ORDER: %s", this->serialReadLine().c_str());
-    //ROS_INFO("GET_EULER_DECOMPOSTION_ORDER: %s", this->serialReadLine().c_str());
-
-
     this->flushSerial();
 
 
+
+
     this->serialWriteString(START_STREAMING);
+
     ROS_INFO_STREAM(this->logger << "Ready\n");
 
     //Complete HACK to make sure that the buffer is empty
@@ -260,7 +269,7 @@ void Y3SpaceDriver::run()
     }
 
 
-    ros::Rate rate(1000);
+    ros::Rate rate(500);
     int line = -2;
     int expected_lines_ = 6;
     while(ros::ok())
@@ -268,11 +277,19 @@ void Y3SpaceDriver::run()
         while(this->available() > 0)
         {
             std::string buf = this->serialReadLine();
-            /*if(line == 3)
-            {
-                ROS_INFO("BUFFER[%d]: %s",line, buf.c_str());
+            //if(line == 0)
+            //{
+            //    ROS_INFO("BUFFER[%d]: %s",line, buf.c_str());
+                //ros::Time now_t = ros::Time::now();
+                //std::cout << "NOW TIME: " << now_t.nsec << std::endl;
 
-            }*/
+                /*struct timeval start;
+                gettimeofday(&start, NULL);
+                long long milliseconds = (start.tv_sec*1000000LL + start.tv_usec) % 1000000000;
+                std::cout << "NOW TIME: " << milliseconds << std::endl;*/
+
+
+            //}
 
             std::string parse;
             std::stringstream ss(buf);
@@ -313,6 +330,7 @@ void Y3SpaceDriver::run()
             	// Should stop reading when line == number of tracked streams
             	if(line == expected_lines_)
             	{
+
             		int j = 0;
             		for_each(parsedVals.begin(), parsedVals.end(), [&](double x){if(x / 1000.0 > 10) {j++;}});
             		if(j > 1)
@@ -340,6 +358,14 @@ void Y3SpaceDriver::run()
             		}
 
 
+            		//Perform synchronization when the data is properly received
+            		if(!devices_are_synched)
+            		{
+            			reference_time_.first = ros::Time::now();
+            			reference_time_.second = toRosTime(parsedVals[0]);
+            			devices_are_synched = true;
+            		}
+
             		// Reset line tracker
             		line = 0;
 
@@ -354,8 +380,12 @@ void Y3SpaceDriver::run()
             		 * 	idx 17-19 --> corrected linear acceleration 41
             		 */
 
+
+
             		// Prepare IMU message
-            		imuMsg.header.stamp           = ros::Time::now();
+            		ros::Time sensor_time = getReadingTime(parsedVals[0]);
+            		imuMsg.header.stamp           = sensor_time;
+            		//ROS_INFO("Time Difference: %f", ros::Time::now().toSec() - sensor_time.toSec());
             		imuMsg.header.frame_id        = "body_FLU";
 
             		imuMsg.orientation.x          = parsedVals[1];
@@ -394,6 +424,8 @@ void Y3SpaceDriver::run()
             		this->m_imuPub.publish(imuMsg);
             		//this->m_tempPub.publish(tempMsg);
             		//this->m_rpyPub.publish(imuRPY);
+
+
             	}
             }
 
@@ -403,6 +435,27 @@ void Y3SpaceDriver::run()
         rate.sleep();
         ros::spinOnce();
     }
+}
+
+ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
+{
+	ros::Time res;
+	res.sec = (long)sensor_time / 1000000;
+	res.nsec = ((long) sensor_time % 1000000) * 1000;
+
+	return res;
+}
+
+ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
+{
+	ros::Time ros_sensor_time = toRosTime(sensor_time);
+	ros::Duration diff_sensor_time = ros_sensor_time - reference_time_.second;
+	ros::Time result = reference_time_.first + diff_sensor_time;
+
+	//ROS_INFO("ros_sensor_time: %f, diff_sensor_time: %f, result: %f",
+	//		ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec());
+
+	return result;
 }
 
 geometry_msgs::Vector3 Y3SpaceDriver::getRPY(geometry_msgs::Quaternion &q)
