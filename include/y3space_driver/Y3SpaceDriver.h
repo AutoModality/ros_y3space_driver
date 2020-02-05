@@ -78,7 +78,12 @@ public:
     //!
     //!
     void readAndPublish(void);
-
+		
+		//!
+    //! \brief getStreamFrequency: it returns imu stream frequency
+    //!
+		int getStreamFrequency(void);
+		
 private:
     // ROS Member Variables
     ros::NodeHandle m_nh;     ///< Nodehandle for the driver node

@@ -27,6 +27,11 @@ void Y3SpaceDriver::getParams()
 	m_pnh.param<int>("frequency", imu_frequency_, 400);
 	m_pnh.param<bool>("debug", debug_, false);
 }
+
+int Y3SpaceDriver::getStreamFrequency()
+{
+	return imu_frequency_;
+}
 void Y3SpaceDriver::setSystemTime()
 {
 	/*time_t now = time(0);
