@@ -206,6 +206,8 @@ void Y3SpaceDriver::initDevice()
 
 	this->getAxisDirection();
 
+	this->serialWriteString(SET_MAGNETOMETER_DISABLED);
+
 	this->setFrequency();
 	this->setStreamingSlots();
 	this->setHeader();
