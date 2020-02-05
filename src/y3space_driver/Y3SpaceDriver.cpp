@@ -229,6 +229,200 @@ void Y3SpaceDriver::setAxisDirection()
 	this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
 //	this->serialReadLine();
 }
+
+
+void Y3SpaceDriver::initStream(void)
+{
+	this->startGyroCalibration();
+	this->getSoftwareVersion();
+	this->setAxisDirection();
+	this->getAxisDirection();
+	this->setFrequency();
+	this->setStreamingSlots();
+	this->setHeader();
+	this->getCalibMode();
+	this->getMIMode();
+	this->flushSerial();
+
+
+	this->serialWriteString(START_STREAMING);
+	ROS_INFO_STREAM(this->logger << "Ready\n");
+}
+
+void Y3SpaceDriver::readAndPublish(void)
+{
+	bool devices_are_synched = false;
+	std::vector<double> parsedVals;
+	sensor_msgs::Imu imuMsg;
+	geometry_msgs::Vector3Stamped imuRPY;
+	std_msgs::Float64 tempMsg;
+
+	//Complete HACK to make sure that the buffer is empty
+	for(int k = 0; k < 10; k++)
+	{
+		this->serialReadLine();
+	}
+
+
+	//int rate_freq = (imu_frequency_ * 2) - 100;
+	//ROS_INFO("RATE: %d", rate_freq);
+	//ros::Rate rate(rate_freq);
+
+	int line = -2;
+	int expected_lines_ = 6;
+
+	while(this->available() > 0)
+	{
+		std::string buf = this->serialReadLine();
+
+		std::string parse;
+		std::stringstream ss(buf);
+		std::stringstream ss_tmp(buf);
+		double i;
+		//Wait for the beginning of the message
+		if(line < 0)
+		{
+			// Parse data from the line
+			while (ss_tmp >> i)
+			{
+				//time stamp is a large number which is at the beginning of the message
+				if(i / 1000.0 > 10)
+				{
+					//We found the time stamp
+					if(line == -1)
+					{
+						ROS_INFO("found the start: %f", i);
+					}
+					line++;
+					break;
+				}
+				if (ss_tmp.peek() == ',')
+					ss_tmp.ignore();
+			}
+		}
+		if(line > -1)
+		{
+			if(line == 0)
+			{
+				imuMsg.header.stamp = ros::Time::now();
+			}
+			line += 1;
+
+			// Parse data from the line
+			while (ss >> i)
+			{
+				parsedVals.push_back(i);
+				if (ss.peek() == ',')
+					ss.ignore();
+			}
+
+			// Should stop reading when line == number of tracked streams
+			if(line == expected_lines_)
+			{
+
+				int j = 0;
+				for_each(parsedVals.begin(), parsedVals.end(), [&](double x){if(x / 1000.0 > 10) {j++;}});
+				if(j > 1)
+				{
+					ROS_INFO("something went wrong. there are more than one timestamp in here. recalculating the offset...");
+					if(debug_)
+					{
+						ROS_INFO("parsedVals size: %d", (int)parsedVals.size());
+						int cnt = 0;
+						for_each(parsedVals.begin(), parsedVals.end(), [&](double x){ROS_INFO("Value[%d] = %f", cnt++, x);});
+						ROS_INFO("---------------------------------");
+					}
+					parsedVals.clear();
+					line=-1;
+					continue;
+				}
+
+
+				if(debug_)
+				{
+					ROS_INFO("parsedVals size: %d", (int)parsedVals.size());
+					int cnt = 0;
+					for_each(parsedVals.begin(), parsedVals.end(), [&](double x){ROS_INFO("Value[%d] = %f", cnt++, x);});
+					ROS_INFO("---------------------------------");
+				}
+
+
+				//Perform synchronization when the data is properly received
+				if(!devices_are_synched)
+				{
+					reference_time_.first = ros::Time::now();
+					reference_time_.second = toRosTime(parsedVals[0]);
+					devices_are_synched = true;
+				}
+
+				// Reset line tracker
+				line = 0;
+
+				/* for 6,38,39,41,44
+				 *	Array Structure:
+				 *	idx 0 --> timestamp
+				 *  idx 1-4 --> untared orientation as Quaternion 6
+				 * 	idx 5-7 --> untared orientation as Euler Angles 7
+				 * 	idx 8-10 --> corrected gyroscope vector 38
+				 * 	idx 11-13 --> corrected accelerometer vector 39
+				 * 	idx 14-16 --> corrected compass vector 40
+				 * 	idx 17-19 --> corrected linear acceleration 41
+				 */
+
+
+
+				// Prepare IMU message
+				//ros::Time sensor_time = getReadingTime(parsedVals[0]);
+				//imuMsg.header.stamp           = sensor_time;
+				//double time_diff = ros::Time::now().toSec() - imuMsg.header.stamp.toSec();
+				//ROS_INFO("Time Diff: %f", time_diff);
+
+				imuMsg.header.frame_id        = "body_FLU";
+
+				imuMsg.orientation.x          = parsedVals[1];
+				imuMsg.orientation.y          = parsedVals[2];
+				imuMsg.orientation.z          = parsedVals[3];
+				imuMsg.orientation.w          = parsedVals[4];
+
+				imuMsg.angular_velocity.x     = parsedVals[8];
+				imuMsg.angular_velocity.y     = parsedVals[9];
+				imuMsg.angular_velocity.z     = parsedVals[10];
+
+				imuMsg.linear_acceleration.x  = 9.8*parsedVals[11];
+				imuMsg.linear_acceleration.y  = 9.8*parsedVals[12];
+				imuMsg.linear_acceleration.z  = 9.8*parsedVals[13];
+
+				// Prepare temperature messages
+				tempMsg.data = parsedVals[14];
+
+				// Clear parsed values
+				parsedVals.clear();
+
+				/*imuRPY.vector = getRPY(imuMsg.orientation);
+
+	            		imuRPY.vector.x = getDegree(imuRPY.vector.x);
+	            		imuRPY.vector.y = getDegree(imuRPY.vector.y);
+	            		imuRPY.vector.z = getDegree(imuRPY.vector.z);*/
+
+				//imuRPY.vector.x = getDegree((double)parsedVals[5]);
+				//imuRPY.vector.y = getDegree((double)parsedVals[6]);
+				//imuRPY.vector.z = getDegree((double)parsedVals[7]);
+				//geometry_msgs::Quaternion q = getQuaternion((double)parsedVals[5],(double)parsedVals[6],(double)parsedVals[7]);
+				//std::cout << q << std::endl;
+
+				imuMsg.orientation = toENU(imuMsg.orientation);
+
+				this->m_imuPub.publish(imuMsg);
+				//this->m_tempPub.publish(tempMsg);
+				//this->m_rpyPub.publish(imuRPY);
+
+
+			}
+		}
+
+	}
+}
+
 //! Run the serial sync
 void Y3SpaceDriver::run()
 {

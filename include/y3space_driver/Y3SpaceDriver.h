@@ -67,6 +67,18 @@ public:
     //!
     void setMIMode(bool on);
 
+    //!
+    //! \brief initStream sets up the imu sensor in streaming mode
+    //!
+    //!
+    void initStream(void);
+
+    //!
+    //! \brief readAndPublish it reads and publishes one imu reading
+    //!
+    //!
+    void readAndPublish(void);
+
 private:
     // ROS Member Variables
     ros::NodeHandle m_nh;     ///< Nodehandle for the driver node
