@@ -26,19 +26,46 @@ Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const st
 
 sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 {
+	//ros::Time start_ = ros::Time::now();
 	//We assume the device is initialized
 	//Getting untared orientation as Quaternion
+	imu_msg_.header.stamp = ros::Time::now();
 	this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
 	std::string quaternion_msg = this->serialReadLine();
-
+	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
+	//printVector<double>(q_arr, "Quaternion");
 
 	this->serialWriteString(GET_CORRECTED_GYRO_RATE);
 	std::string gyro_msg = this->serialReadLine();
+	std::vector<double>gyro_arr = parseString<double>(gyro_msg);
+	//printVector<double>(gyro_arr, "Gyro");
+
 
 	this->serialWriteString(GET_CORRECTED_ACCELEROMETER_VECTOR);
 	std::string accel_msg = this->serialReadLine();
+	std::vector<double>accel_arr = parseString<double>(accel_msg);
+	//printVector<double>(accel_arr, "Accel");
 
+	//ros::Time end_ = ros::Time::now();
+	//double diff = end_.toSec() - start_.toSec();
+	//ROS_INFO("Time Difference: %f", diff);
+	// Prepare IMU message
+	
 
+	imu_msg_.header.frame_id        = "body_FLU";
+	imu_msg_.orientation.x          = quaternion_arr[1];
+	imu_msg_.orientation.y          = quaternion_arr[2];
+	imu_msg_.orientation.z          = quaternion_arr[3];
+	imu_msg_.orientation.w          = quaternion_arr[4];
+	
+	imu_msg_.angular_velocity.x     = gyro_arr[8];
+	imu_msg_.angular_velocity.y     = gyro_arr[9];
+  imu_msg_.angular_velocity.z     = gyro_arr[10];
+
+  imu_msg_.linear_acceleration.x  = 9.8*accel_arr[11];
+  imu_msg_.linear_acceleration.y  = 9.8*accel_arr[12];
+  imu_msg_.linear_acceleration.z  = 9.8*accel_arr[13];
+	
 	//ROS_INFO("quaternion_msg: %s", quaternion_msg.c_str());
 
 	return imu_msg_;
@@ -276,6 +303,10 @@ void Y3SpaceDriver::setAxisDirection()
 	this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
 //	this->serialReadLine();
 }
+
+
+
+
 //! Run the serial sync
 void Y3SpaceDriver::run()
 {

@@ -90,7 +90,33 @@ private:
     geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
     geometry_msgs::Quaternion getQuaternion(double roll, double pitch, double yaw);
     geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
-
+		
+		template<class T>
+		std::vector<T> parseString(const std::string &src, char deliminator = ',')
+		{
+			std::stringstream ss(src);
+			T i;
+			std::vector<T> result;
+			//Wait for the beginning of the message
+			while (ss >> i)
+			{
+				result.push_back(i);
+				if (ss.peek() == ',')
+				{
+					ss.ignore();
+				}
+			}
+			return result;
+		}
+			
+		template<class T>	
+		void printVector(const std::vector<T> &src, const std::string &header = "message")
+		{
+			std::string message = "";
+			std::for_each(src.begin(), src.end(), [&](T x){message += std::to_string(x) + " ";});
+			ROS_INFO("%s: %s",header.c_str(),message.c_str());
+		}	
+				
     double getDegree(double rad);
     void setFrequency();
     void setStreamingSlots();
@@ -105,7 +131,7 @@ private:
     
     static const std::string MODE_ABSOLUTE;
     static const std::string MODE_RELATIVE;
-
+		
     /*
      * Below is a list of commands that can be written via the
      * serialWrite() function to send raw commands to the 3-Space
