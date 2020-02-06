@@ -19,6 +19,8 @@ Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const st
     this->serialConnect();
 
     initDevice();
+
+    ROS_INFO_STREAM(this->logger << "Ready\n");
     //this->m_imuPub = this->m_nh.advertise<sensor_msgs::Imu>("/mavros/imu/data", 10);
     //this->m_tempPub = this->m_nh.advertise<std_msgs::Float64>("/imu/temp", 10);
     //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::Vector3Stamped>("/imu/rpy", 10);
@@ -49,9 +51,8 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	//ros::Time end_ = ros::Time::now();
 	//double diff = end_.toSec() - start_.toSec();
 	//ROS_INFO("Time Difference: %f", diff);
-	// Prepare IMU message
-	
 
+	// Prepare IMU message
 	imu_msg_.header.frame_id        = "body_FLU";
 	imu_msg_.orientation.x          = quaternion_arr[1];
 	imu_msg_.orientation.y          = quaternion_arr[2];
@@ -60,11 +61,11 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	
 	imu_msg_.angular_velocity.x     = gyro_arr[8];
 	imu_msg_.angular_velocity.y     = gyro_arr[9];
-  imu_msg_.angular_velocity.z     = gyro_arr[10];
+	imu_msg_.angular_velocity.z     = gyro_arr[10];
 
-  imu_msg_.linear_acceleration.x  = 9.8*accel_arr[11];
-  imu_msg_.linear_acceleration.y  = 9.8*accel_arr[12];
-  imu_msg_.linear_acceleration.z  = 9.8*accel_arr[13];
+	imu_msg_.linear_acceleration.x  = 9.8*accel_arr[11];
+	imu_msg_.linear_acceleration.y  = 9.8*accel_arr[12];
+	imu_msg_.linear_acceleration.z  = 9.8*accel_arr[13];
 	
 	//ROS_INFO("quaternion_msg: %s", quaternion_msg.c_str());
 
