@@ -35,7 +35,7 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
 	std::string quaternion_msg = this->serialReadLine();
 	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
-	//printVector<double>(q_arr, "Quaternion");
+	//printVector<double>(quaternion_arr, "Quaternion");
 
 	this->serialWriteString(GET_CORRECTED_GYRO_RATE);
 	std::string gyro_msg = this->serialReadLine();
@@ -51,7 +51,7 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	//ros::Time end_ = ros::Time::now();
 	//double diff = end_.toSec() - start_.toSec();
 	//ROS_INFO("Time Difference: %f", diff);
-
+	
 	// Prepare IMU message
 	imu_msg_.header.frame_id        = "body_FLU";
 	imu_msg_.orientation.x          = quaternion_arr[1];
@@ -59,13 +59,13 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	imu_msg_.orientation.z          = quaternion_arr[3];
 	imu_msg_.orientation.w          = quaternion_arr[4];
 	
-	imu_msg_.angular_velocity.x     = gyro_arr[8];
-	imu_msg_.angular_velocity.y     = gyro_arr[9];
-	imu_msg_.angular_velocity.z     = gyro_arr[10];
+	imu_msg_.angular_velocity.x     = gyro_arr[0];
+	imu_msg_.angular_velocity.y     = gyro_arr[1];
+	imu_msg_.angular_velocity.z     = gyro_arr[2];
 
-	imu_msg_.linear_acceleration.x  = 9.8*accel_arr[11];
-	imu_msg_.linear_acceleration.y  = 9.8*accel_arr[12];
-	imu_msg_.linear_acceleration.z  = 9.8*accel_arr[13];
+	imu_msg_.linear_acceleration.x  = 9.8*accel_arr[0];
+	imu_msg_.linear_acceleration.y  = 9.8*accel_arr[1];
+	imu_msg_.linear_acceleration.z  = 9.8*accel_arr[2];
 	
 	//ROS_INFO("quaternion_msg: %s", quaternion_msg.c_str());
 
