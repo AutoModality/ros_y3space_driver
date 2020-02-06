@@ -126,6 +126,7 @@ private:
     void setAxisDirection();
     void setMagnetometer(bool on);
     const std::string getMagnetometerEnabled();
+    void setFilterMode();
     ros::Time getYostRosTime(long sensor_time);
     ros::Time toRosTime(double sensor_time);
     ros::Time getReadingTime(double sensor_time);
@@ -213,6 +214,10 @@ private:
     static constexpr auto START_STREAMING                       = ";85\n";
     static constexpr auto STOP_STREAMING                        = ":86\n";
     static constexpr auto UPDATE_CURRENT_TIMESTAMP              = ":95\n";
+		static constexpr auto SET_FILTER_MODE_KALMAN								= ":123,1\n";
+		static constexpr auto SET_FILTER_MODE_QGRAD								  = ":123,5\n";
+	
+
 
     // Settings Configuration READ Commands
     static constexpr auto GET_AXIS_DIRECTION           = ":143\n";
