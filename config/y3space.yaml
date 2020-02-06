@@ -5,3 +5,4 @@ mode: 'absolute'  # should be 'relative' or 'absolute'
 frame: 'imu_link'
 frequency: 300
 debug: false
+magnetometer_enabled: true

@@ -76,6 +76,7 @@ void Y3SpaceDriver::getParams()
 {
 	m_pnh.param<int>("frequency", imu_frequency_, 400);
 	m_pnh.param<bool>("debug", debug_, false);
+	m_pnh.param<bool>("magnetometer_enabled", magnetometer_enabled_, true);
 }
 void Y3SpaceDriver::setSystemTime()
 {
@@ -191,6 +192,17 @@ void Y3SpaceDriver::setMIMode(bool on)
     }
 }
 
+void Y3SpaceDriver::setMagnetometer(bool on)
+{
+    if(on)
+    {
+        this->serialWriteString(SET_MAGNETOMETER_ENABLED);
+    }
+    else
+    {
+        this->serialWriteString(SET_MAGNETOMETER_DISABLED);
+    }
+}
 
 /*
  * **********************************************
@@ -203,13 +215,16 @@ void Y3SpaceDriver::initDevice()
 	this->getSoftwareVersion();
 	this->setAxisDirection();
 	this->getAxisDirection();
-	this->serialWriteString(SET_MAGNETOMETER_ENABLED);
-//	this->setFrequency();
+
+	this->setMagnetometer(magnetometer_enabled_);
+
+	this->setFrequency();
 	this->setStreamingSlots();
 	this->setHeader();
 	this->getCalibMode();
 	this->setFilterMode();
 	this->getMIMode();
+	this->getMagnetometerEnabled();
 	this->flushSerial();
 }
 
@@ -270,6 +285,32 @@ const std::string Y3SpaceDriver::getMIMode()
     }();
 
     ROS_INFO_STREAM(this->logger << "MI Mode: " << ret);
+    return ret;
+}
+
+const std::string Y3SpaceDriver::getMagnetometerEnabled()
+{
+    this->serialWriteString(GET_MAGNETOMETER_ENABLED);
+
+    const std::string buf = this->serialReadLine();
+    const std::string ret = [&]()
+    {
+        if(buf == "0\r\n")
+        {
+            return "Disabled";
+        }
+        else if ( buf == "1\r\n")
+        {
+            return "Enabled";
+        }
+        else
+        {
+            ROS_WARN_STREAM(this->logger << "Buffer indicates: " + buf);
+            return "Unknown";
+        }
+    }();
+
+    ROS_INFO_STREAM(this->logger << "Magnetometer enabled state: " << ret);
     return ret;
 }
 

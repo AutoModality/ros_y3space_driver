@@ -82,6 +82,7 @@ private:
     sensor_msgs::Imu imu_msg_;
     bool debug_;
     int imu_frequency_;
+    bool magnetometer_enabled_;
 
     std::pair<ros::Time, ros::Time> reference_time_;
 
@@ -123,6 +124,8 @@ private:
     void setHeader();
     void setSystemTime();
     void setAxisDirection();
+    void setMagnetometer(bool on);
+    const std::string getMagnetometerEnabled();
     void setFilterMode();
     ros::Time getYostRosTime(long sensor_time);
     ros::Time toRosTime(double sensor_time);
@@ -221,6 +224,7 @@ private:
     static constexpr auto GET_FILTER_MODE              = ":152\n";
     static constexpr auto GET_EULER_DECOMPOSTION_ORDER = ":156\n";
     static constexpr auto GET_MI_MODE_ENABLED          = ":136\n";
+    static constexpr auto GET_MAGNETOMETER_ENABLED     = ":142\n";
 
     // Settings Configuration WRITE Commands
     static constexpr auto SET_EULER_ANGLE_DECOMP_ORDER_XYZ = ":16,0\n";
