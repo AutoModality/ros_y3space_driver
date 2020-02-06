@@ -198,23 +198,26 @@ void Y3SpaceDriver::setMIMode(bool on)
  */
 void Y3SpaceDriver::initDevice()
 {
-	this->startGyroCalibration();
+	//this->startGyroCalibration();
 	this->getSoftwareVersion();
-
-
 	this->setAxisDirection();
-
 	this->getAxisDirection();
-
-	this->serialWriteString(SET_MAGNETOMETER_DISABLED);
-
-	this->setFrequency();
+	this->serialWriteString(SET_MAGNETOMETER_ENABLED);
+//	this->setFrequency();
 	this->setStreamingSlots();
 	this->setHeader();
-
 	this->getCalibMode();
+	this->setFilterMode();
 	this->getMIMode();
 	this->flushSerial();
+}
+
+void Y3SpaceDriver::setFilterMode()
+{
+	this->serialWriteString(SET_FILTER_MODE_KALMAN);
+	sleep(2);
+	this->serialWriteString(GET_FILTER_MODE);
+	ROS_INFO("GET_FILTER_MODE: %s", this->serialReadLine().c_str());
 }
 
 const std::string Y3SpaceDriver::getCalibMode()
