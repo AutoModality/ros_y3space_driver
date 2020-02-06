@@ -31,7 +31,7 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	//ros::Time start_ = ros::Time::now();
 	//We assume the device is initialized
 	//Getting untared orientation as Quaternion
-	imu_msg_.header.stamp = ros::Time::now();
+	// imu_msg_.header.stamp = ros::Time::now();
 	this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
 	std::string quaternion_msg = this->serialReadLine();
 	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
@@ -51,13 +51,16 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	//ros::Time end_ = ros::Time::now();
 	//double diff = end_.toSec() - start_.toSec();
 	//ROS_INFO("Time Difference: %f", diff);
-	
+
 	// Prepare IMU message
+	ros::Time sensor_time = getReadingTime(quaternion_arr[1]);
+	imu_msg_.header.stamp           = sensor_time;
+
 	imu_msg_.header.frame_id        = "body_FLU";
-	imu_msg_.orientation.x          = quaternion_arr[1];
-	imu_msg_.orientation.y          = quaternion_arr[2];
-	imu_msg_.orientation.z          = quaternion_arr[3];
-	imu_msg_.orientation.w          = quaternion_arr[4];
+	imu_msg_.orientation.x          = quaternion_arr[2];
+	imu_msg_.orientation.y          = quaternion_arr[3];
+	imu_msg_.orientation.z          = quaternion_arr[4];
+	imu_msg_.orientation.w          = quaternion_arr[5];
 	
 	imu_msg_.angular_velocity.x     = gyro_arr[0];
 	imu_msg_.angular_velocity.y     = gyro_arr[1];
@@ -331,9 +334,9 @@ void Y3SpaceDriver::setFrequency()
 
 void Y3SpaceDriver::setHeader()
 {
-	//Ask for timestamp
-	this->serialWriteString(SET_TIME_STAMP_REQUEST);
-	ROS_INFO("SET_TIME_STAMP_REQUEST: %s", this->serialReadLine().c_str());
+	// Ask for timestamp and success byte
+	this->serialWriteString(SET_HEADER_TS_SUCCESS);
+	// Returns no data
 }
 
 void Y3SpaceDriver::setStreamingSlots()
@@ -556,12 +559,22 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 
 ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 {
-	ros::Time ros_sensor_time = toRosTime(sensor_time);
+	ros::Duration resync_duration (5.0);
+	ros::Time ros_sensor_time = toRosTime(sensor_time - 12000);
+
+	//Perform synchronization when the data is properly received
+	if(!time_synced_ || ros::Time::now() > reference_time_.first + resync_duration)
+	{
+		reference_time_.first = ros::Time::now();
+		reference_time_.second = ros_sensor_time;
+		time_synced_ = true;
+	}
+	
 	ros::Duration diff_sensor_time = ros_sensor_time - reference_time_.second;
 	ros::Time result = reference_time_.first + diff_sensor_time;
 
-	//ROS_INFO("ros_sensor_time: %f, diff_sensor_time: %f, result: %f",
-	//		ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec());
+	ROS_INFO_THROTTLE(1,"ros_time_now: %f, sensor_time: %f, diff_sensor_time: %f, result: %f",
+			ros::Time::now().toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec());
 
 	return result;
 }

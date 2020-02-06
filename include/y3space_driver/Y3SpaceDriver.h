@@ -85,6 +85,7 @@ private:
     bool magnetometer_enabled_;
 
     std::pair<ros::Time, ros::Time> reference_time_;
+    bool time_synced_ = false;
 
     std::string getFrequencyMsg(int frequency);
     void getParams();
@@ -164,7 +165,9 @@ private:
     // Corrected Raw Data Commands
     static constexpr auto GET_ALL_CORRECTED_COMPONENT_SENSOR                = ":37\n";
     static constexpr auto GET_CORRECTED_GYRO_RATE                           = ":38\n";
+    static constexpr auto GET_CORRECTED_GYRO_RATE_WITH_HEADER               = ";38\n";
     static constexpr auto GET_CORRECTED_ACCELEROMETER_VECTOR                = ":39\n";
+    static constexpr auto GET_CORRECTED_ACCELEROMETER_VECTOR_WITH_HEADER    = ";39\n";
     static constexpr auto GET_CORRECTED_COMPASS_VECTOR                      = ":40\n";
     static constexpr auto GET_CORRECTED_LINEAR_ACCELERATION_IN_GLOBAL_SPACE = ":41\n";
     static constexpr auto CORRECT_RAW_GYRO_DATA                             = ":48\n";
@@ -185,7 +188,9 @@ private:
     // Streaming Commands
     //according to http://yeitechnology.freshdesk.com/support/discussions/topics/1000056170 and the user manual, timestamp command is the following
     static constexpr auto SET_TIME_STAMP_REQUEST				= ";221,2\n";
-    static constexpr auto GET_HEADER_SETTING					= ":222\n";
+    // Sets the wired response header to return success byte and timestamp
+    static constexpr auto SET_HEADER_TS_SUCCESS				  = ":221,3\n";
+    static constexpr auto GET_HEADER_SETTING					  = ":222\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER_TEMP        = ":80,1,43,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER_QUATERNION  = ":80,1,0,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION_EULER  = ":80,0,1,255,255,255,255,255,255\n";
