@@ -80,6 +80,7 @@ void Y3SpaceDriver::getParams()
 	m_pnh.param<int>("frequency", imu_frequency_, 400);
 	m_pnh.param<bool>("debug", debug_, false);
 	m_pnh.param<bool>("magnetometer_enabled", magnetometer_enabled_, true);
+	m_pnh.param<double>("timestamp_offset", timestamp_offset_, 0.012);
 }
 void Y3SpaceDriver::setSystemTime()
 {
@@ -217,15 +218,19 @@ void Y3SpaceDriver::initDevice()
 	//this->startGyroCalibration();
 	this->getSoftwareVersion();
 	this->setAxisDirection();
-	this->getAxisDirection();
+	this->setHeader();
 
 	this->setMagnetometer(magnetometer_enabled_);
-
-	this->setFrequency();
-	this->setStreamingSlots();
-	this->setHeader();
-	this->getCalibMode();
 	this->setFilterMode();
+
+	sleep(2);
+
+	this->serialWriteString(GET_FILTER_MODE);
+	ROS_INFO("GET_FILTER_MODE: %s", this->serialReadLine().c_str());
+	// this->setFrequency();
+	// this->setStreamingSlots();
+	this->getAxisDirection();
+	this->getCalibMode();
 	this->getMIMode();
 	this->getMagnetometerEnabled();
 	this->flushSerial();
@@ -234,9 +239,6 @@ void Y3SpaceDriver::initDevice()
 void Y3SpaceDriver::setFilterMode()
 {
 	this->serialWriteString(SET_FILTER_MODE_KALMAN);
-	sleep(2);
-	this->serialWriteString(GET_FILTER_MODE);
-	ROS_INFO("GET_FILTER_MODE: %s", this->serialReadLine().c_str());
 }
 
 const std::string Y3SpaceDriver::getCalibMode()
@@ -329,7 +331,6 @@ std::string Y3SpaceDriver::getFrequencyMsg(int frequency)
 void Y3SpaceDriver::setFrequency()
 {
 	this->serialWriteString(getFrequencyMsg(imu_frequency_).c_str());
-	ROS_INFO("Y3SpaceDriver: Streaming Frequency: %s", this->serialReadLine().c_str());
 }
 
 void Y3SpaceDriver::setHeader()
@@ -351,7 +352,6 @@ void Y3SpaceDriver::setAxisDirection()
 {
 	//AXIS DIRECTION
 	this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
-//	this->serialReadLine();
 }
 
 
@@ -560,21 +560,22 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 {
 	ros::Duration resync_duration (5.0);
-	ros::Time ros_sensor_time = toRosTime(sensor_time - 12000);
+	ros::Duration offset (timestamp_offset_);
+	ros::Time ros_sensor_time = toRosTime(sensor_time);
 
 	//Perform synchronization when the data is properly received
-	if(!time_synced_ || ros::Time::now() > reference_time_.first + resync_duration)
+	if(!time_synced_ )	//|| ros::Time::now() > reference_time_.first + resync_duration)
 	{
 		reference_time_.first = ros::Time::now();
-		reference_time_.second = ros_sensor_time;
+		reference_time_.second = ros_sensor_time + offset;
 		time_synced_ = true;
 	}
 	
 	ros::Duration diff_sensor_time = ros_sensor_time - reference_time_.second;
 	ros::Time result = reference_time_.first + diff_sensor_time;
 
-	ROS_INFO_THROTTLE(1,"ros_time_now: %f, sensor_time: %f, diff_sensor_time: %f, result: %f",
-			ros::Time::now().toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec());
+	ROS_INFO_THROTTLE(1,"\tros_time_now: %f\nRaw Sensor Time: %f, Elapsed Sensor Time: %f, result: %f\n\tdelta time stamps: %f",
+			ros::Time::now().toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec(), result.toSec()-ros::Time::now().toSec());
 
 	return result;
 }

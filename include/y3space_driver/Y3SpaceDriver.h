@@ -83,6 +83,7 @@ private:
     bool debug_;
     int imu_frequency_;
     bool magnetometer_enabled_;
+    double timestamp_offset_;
 
     std::pair<ros::Time, ros::Time> reference_time_;
     bool time_synced_ = false;
