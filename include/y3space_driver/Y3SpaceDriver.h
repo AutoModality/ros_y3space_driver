@@ -187,6 +187,8 @@ private:
     static constexpr auto GET_RAW_COMPASS_DATA              = ":67\n";
 
     // Streaming Commands
+    static constexpr auto SET_REFERENCE_VECTOR_SINGLE				= ":105,1\n";
+    static constexpr auto SET_REFERENCE_VECTOR_CONTINUOUS		= ":105,2\n";
     //according to http://yeitechnology.freshdesk.com/support/discussions/topics/1000056170 and the user manual, timestamp command is the following
     static constexpr auto SET_TIME_STAMP_REQUEST				= ";221,2\n";
     // Sets the wired response header to return success byte and timestamp

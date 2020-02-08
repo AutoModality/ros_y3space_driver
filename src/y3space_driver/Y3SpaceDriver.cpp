@@ -112,6 +112,8 @@ ros::Time Y3SpaceDriver::getYostRosTime(long sensor_time)
 
 Y3SpaceDriver::~Y3SpaceDriver()
 {
+	//resetSensor();
+
 	serialDisConnect();
 }
 
@@ -219,9 +221,9 @@ void Y3SpaceDriver::initDevice()
 	this->getSoftwareVersion();
 	this->setAxisDirection();
 	this->setHeader();
-
 	this->setMagnetometer(magnetometer_enabled_);
 	this->setFilterMode();
+	this->serialWriteString(SET_REFERENCE_VECTOR_CONTINUOUS);
 
 	sleep(2);
 
@@ -561,21 +563,25 @@ ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 {
 	ros::Duration resync_duration (5.0);
 	ros::Duration offset (timestamp_offset_);
+	ros::Duration sensor_correction;
 	ros::Time ros_sensor_time = toRosTime(sensor_time);
 
 	//Perform synchronization when the data is properly received
 	if(!time_synced_ )	//|| ros::Time::now() > reference_time_.first + resync_duration)
 	{
 		reference_time_.first = ros::Time::now();
-		reference_time_.second = ros_sensor_time + offset;
+		reference_time_.second = ros_sensor_time;
+
 		time_synced_ = true;
 	}
 	
 	ros::Duration diff_sensor_time = ros_sensor_time - reference_time_.second;
 	ros::Time result = reference_time_.first + diff_sensor_time;
 
-	ROS_INFO_THROTTLE(1,"\tros_time_now: %f\nRaw Sensor Time: %f, Elapsed Sensor Time: %f, result: %f\n\tdelta time stamps: %f",
-			ros::Time::now().toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec(), result.toSec()-ros::Time::now().toSec());
+	ros::Time now = ros::Time::now();
+
+	ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, Elapsed Sensor Time: %f, result: %f\n\t\tdelta time stamps: %f",
+			now.toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec(), result.toSec()-now.toSec());
 
 	return result;
 }

@@ -6,3 +6,4 @@ frame: 'imu_link'
 frequency: 300
 debug: false
 magnetometer_enabled: true
+timestamp_offset: 0.1
