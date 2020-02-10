@@ -580,8 +580,8 @@ ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 
 	ros::Time now = ros::Time::now();
 
-	ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, Elapsed Sensor Time: %f, result: %f\n\t\tdelta time stamps: %f",
-			now.toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec(), result.toSec()-now.toSec());
+	// ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, Elapsed Sensor Time: %f, result: %f\n\t\tdelta time stamps: %f",
+	// 		now.toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec(), result.toSec()-now.toSec());
 
 	return result;
 }
