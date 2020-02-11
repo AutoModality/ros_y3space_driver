@@ -84,6 +84,7 @@ private:
     int imu_frequency_;
     bool magnetometer_enabled_;
     double timestamp_offset_;
+    ros::Time ros_time_start_;
 
     std::pair<ros::Time, ros::Time> reference_time_;
     bool time_synced_ = false;
@@ -93,6 +94,7 @@ private:
     geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
     geometry_msgs::Quaternion getQuaternion(double roll, double pitch, double yaw);
     geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
+    void resetTimeStamp();
 		
 		template<class T>
 		std::vector<T> parseString(const std::string &src, char deliminator = ',')
@@ -131,6 +133,7 @@ private:
     void setFilterMode();
     ros::Time getYostRosTime(long sensor_time);
     ros::Time toRosTime(double sensor_time);
+    ros::Duration toRosDuration(double sensor_time);
     ros::Time getReadingTime(double sensor_time);
 
     static const std::string logger; ///< Logger tag
@@ -221,7 +224,7 @@ private:
     static constexpr auto GET_STREAMING_BATCH                   = ":84\n";
     static constexpr auto START_STREAMING                       = ";85\n";
     static constexpr auto STOP_STREAMING                        = ":86\n";
-    static constexpr auto UPDATE_CURRENT_TIMESTAMP              = ":95\n";
+    static constexpr auto UPDATE_CURRENT_TIMESTAMP              = ":95,0\n";
 		static constexpr auto SET_FILTER_MODE_KALMAN								= ":123,1\n";
 		static constexpr auto SET_FILTER_MODE_QGRAD								  = ":123,5\n";
 	

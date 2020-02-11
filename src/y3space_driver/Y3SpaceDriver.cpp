@@ -225,6 +225,8 @@ void Y3SpaceDriver::initDevice()
 	this->setFilterMode();
 	this->serialWriteString(SET_REFERENCE_VECTOR_CONTINUOUS);
 
+	this->resetTimeStamp();
+
 	sleep(2);
 
 	this->serialWriteString(GET_FILTER_MODE);
@@ -236,6 +238,12 @@ void Y3SpaceDriver::initDevice()
 	this->getMIMode();
 	this->getMagnetometerEnabled();
 	this->flushSerial();
+}
+
+void Y3SpaceDriver::resetTimeStamp()
+{
+	this->serialWriteString(UPDATE_CURRENT_TIMESTAMP);
+	ros_time_start_ = ros::Time::now();
 }
 
 void Y3SpaceDriver::setFilterMode()
@@ -559,30 +567,27 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 	return res;
 }
 
+ros::Duration Y3SpaceDriver::toRosDuration(double sensor_time)
+{
+	ros::Duration res;
+	res.sec = (long)sensor_time / 1000000;
+	res.nsec = ((long) sensor_time % 1000000) * 1000;
+
+	return res;
+}
+
 ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 {
-	ros::Duration resync_duration (5.0);
-	ros::Duration offset (timestamp_offset_);
-	ros::Duration sensor_correction;
-	ros::Time ros_sensor_time = toRosTime(sensor_time);
+	ros::Duration ros_sensor_time = toRosDuration(sensor_time);
 
-	//Perform synchronization when the data is properly received
-	if(!time_synced_ )	//|| ros::Time::now() > reference_time_.first + resync_duration)
-	{
-		reference_time_.first = ros::Time::now();
-		reference_time_.second = ros_sensor_time;
+	ros::Time result = ros_time_start_ + ros_sensor_time;
 
-		time_synced_ = true;
+	if (debug_) {
+		ros::Time now = ros::Time::now();
+		ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, result: %f\n\t\tage of data: %f sec",
+				now.toSec(), ros_sensor_time.toSec(), result.toSec(), now.toSec()-result.toSec());
 	}
 	
-	ros::Duration diff_sensor_time = ros_sensor_time - reference_time_.second;
-	ros::Time result = reference_time_.first + diff_sensor_time;
-
-	ros::Time now = ros::Time::now();
-
-	// ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, Elapsed Sensor Time: %f, result: %f\n\t\tdelta time stamps: %f",
-	// 		now.toSec(), ros_sensor_time.toSec(), diff_sensor_time.toSec(), result.toSec(), result.toSec()-now.toSec());
-
 	return result;
 }
 
