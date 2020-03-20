@@ -67,6 +67,8 @@ public:
     //!
     void setMIMode(bool on);
     sensor_msgs::Imu &getImuMessage();
+    
+    void syncCB(const ros::TimerEvent&);
 
     void initDevice();
 
@@ -85,6 +87,7 @@ private:
     bool magnetometer_enabled_;
     double timestamp_offset_;
     ros::Time ros_time_start_;
+    double msg_latency_ {0};
 
     std::pair<ros::Time, ros::Time> reference_time_;
     bool time_synced_ = false;
@@ -95,6 +98,7 @@ private:
     geometry_msgs::Quaternion getQuaternion(double roll, double pitch, double yaw);
     geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
     void resetTimeStamp();
+    void syncTimeStamp();
 		
 		template<class T>
 		std::vector<T> parseString(const std::string &src, char deliminator = ',')
@@ -180,6 +184,7 @@ private:
 
     // Misc. Raw Data Commands
     static constexpr auto GET_TEMPERATURE_C     = ":43\n";
+    static constexpr auto GET_TEMPERATURE_C_W_HEADER     = ";43\n";
     static constexpr auto GET_TEMPERATURE_F     = ":44\n";
     static constexpr auto GET_CONFIDENCE_FACTOR = ":45\n";
 

@@ -28,29 +28,20 @@ Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const st
 
 sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 {
-	//ros::Time start_ = ros::Time::now();
 	//We assume the device is initialized
 	//Getting untared orientation as Quaternion
-	// imu_msg_.header.stamp = ros::Time::now();
 	this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
 	std::string quaternion_msg = this->serialReadLine();
 	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
-	//printVector<double>(quaternion_arr, "Quaternion");
 
 	this->serialWriteString(GET_CORRECTED_GYRO_RATE);
 	std::string gyro_msg = this->serialReadLine();
 	std::vector<double>gyro_arr = parseString<double>(gyro_msg);
-	//printVector<double>(gyro_arr, "Gyro");
 
 
 	this->serialWriteString(GET_CORRECTED_ACCELEROMETER_VECTOR);
 	std::string accel_msg = this->serialReadLine();
 	std::vector<double>accel_arr = parseString<double>(accel_msg);
-	//printVector<double>(accel_arr, "Accel");
-
-	//ros::Time end_ = ros::Time::now();
-	//double diff = end_.toSec() - start_.toSec();
-	//ROS_INFO("Time Difference: %f", diff);
 
 	// Prepare IMU message
 	ros::Time sensor_time = getReadingTime(quaternion_arr[1]);
@@ -69,8 +60,6 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 	imu_msg_.linear_acceleration.x  = 9.8*accel_arr[0];
 	imu_msg_.linear_acceleration.y  = 9.8*accel_arr[1];
 	imu_msg_.linear_acceleration.z  = 9.8*accel_arr[2];
-	
-	//ROS_INFO("quaternion_msg: %s", quaternion_msg.c_str());
 
 	return imu_msg_;
 }
@@ -81,24 +70,6 @@ void Y3SpaceDriver::getParams()
 	m_pnh.param<bool>("debug", debug_, false);
 	m_pnh.param<bool>("magnetometer_enabled", magnetometer_enabled_, true);
 	m_pnh.param<double>("timestamp_offset", timestamp_offset_, 0.012);
-}
-void Y3SpaceDriver::setSystemTime()
-{
-	/*time_t now = time(0);
-	long current_system_time = now;
-
-	std::string time_update_msg = ":95,"+ std::to_string(current_system_time) +"\n";
-	this->serialWriteString(time_update_msg);
-
-	std::cout << time_update_msg << std::endl;
-
-	ROS_INFO("Y3SpaceDriver: System Time: %s", this->serialReadLine().c_str());*/
-	/*struct timeval start;
-	gettimeofday(&start, NULL);
-	long long milliseconds = (start.tv_sec*1000000LL + start.tv_usec) % 1000000000;
-	std::string time_update_msg = ":95,"+ std::to_string(milliseconds) +"\n";
-	std::cout << "SET TIME MSG: " << time_update_msg << std::endl;*/
-
 }
 
 ros::Time Y3SpaceDriver::getYostRosTime(long sensor_time)
@@ -238,12 +209,44 @@ void Y3SpaceDriver::initDevice()
 	this->getMIMode();
 	this->getMagnetometerEnabled();
 	this->flushSerial();
+
+	this->syncTimeStamp();
 }
 
 void Y3SpaceDriver::resetTimeStamp()
 {
 	this->serialWriteString(UPDATE_CURRENT_TIMESTAMP);
 	ros_time_start_ = ros::Time::now();
+	ROS_INFO_STREAM("RESETTING SENSOR TIME STAMP at " << ros_time_start_);
+}
+
+void Y3SpaceDriver::syncTimeStamp()
+{
+	std::vector<double> latency;
+	std::vector<double> sensor_time;
+	std::string sensor_msg;
+	std::vector<double>sensor_msg_arr;
+	ros::Time sensor_time_ros;
+
+	// Zero Yost time
+	this->resetTimeStamp();
+
+	// Calculate message latency
+	for (int i = 0; i < 5; ++i)
+	{
+		this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
+		sensor_msg = this->serialReadLine();
+		sensor_msg_arr = parseString<double>(sensor_msg);
+
+		sensor_time.push_back( sensor_msg_arr[1] / 1000000 );
+
+		latency.push_back ((ros::Time::now().toSec() - ros_time_start_.toSec() - sensor_time.back()) /2 );
+	}
+
+	double average = std::accumulate( latency.begin(), latency.end(), 0.0) / latency.size();
+	ROS_INFO_STREAM(this->logger << "Average Yost IMU message latency is " << average);
+
+	msg_latency_ = average;
 }
 
 void Y3SpaceDriver::setFilterMode()
@@ -363,9 +366,6 @@ void Y3SpaceDriver::setAxisDirection()
 	//AXIS DIRECTION
 	this->serialWriteString(SET_AXIS_DIRECTIONS_FLU);
 }
-
-
-
 
 //! Run the serial sync
 void Y3SpaceDriver::run()
@@ -570,22 +570,36 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 ros::Duration Y3SpaceDriver::toRosDuration(double sensor_time)
 {
 	ros::Duration res;
-	res.sec = (long)sensor_time / 1000000;
-	res.nsec = ((long) sensor_time % 1000000) * 1000;
+	double sensor_time_sec = sensor_time / 1000000;
+
+	// Clock correction (from empirical testing)
+	// sensor_time_sec *= 1.0025;
+
+	res = ros::Duration(sensor_time_sec);
+
+	ROS_INFO_STREAM_THROTTLE(1, "Sensor time: " << sensor_time << "\nROS Duration: " << res);
 
 	return res;
 }
 
+// Returns Yost sensor time converted to ROS time
 ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 {
-	ros::Duration ros_sensor_time = toRosDuration(sensor_time);
+	// ros::Duration ros_sensor_time = toRosDuration(sensor_time);
+	ros::Duration ros_sensor_time = ros::Duration(sensor_time / 1000000);
 
-	ros::Time result = ros_time_start_ + ros_sensor_time;
+	if (ros_sensor_time.sec > 3)
+		syncTimeStamp();
+
+	// Add in 2x msg_latency to account for two messages -- initial sync message and current message
+	ros::Time result = ros_time_start_ + ros_sensor_time + ros::Duration(msg_latency_ * 2);
+
+	ROS_INFO_STREAM_THROTTLE(1,"Yost|ROS timestamp " << result);
 
 	if (debug_) {
 		ros::Time now = ros::Time::now();
-		ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, result: %f\n\t\tage of data: %f sec",
-				now.toSec(), ros_sensor_time.toSec(), result.toSec(), now.toSec()-result.toSec());
+		ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, result: %f, msg latency: %f\n\t\tage of data: %f sec",
+				now.toSec(), ros_sensor_time.toSec(), result.toSec(), msg_latency_, now.toSec()-result.toSec());
 	}
 	
 	return result;
