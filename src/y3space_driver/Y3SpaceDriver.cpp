@@ -567,26 +567,12 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 	return res;
 }
 
-ros::Duration Y3SpaceDriver::toRosDuration(double sensor_time)
-{
-	ros::Duration res;
-	double sensor_time_sec = sensor_time / 1000000;
-
-	// Clock correction (from empirical testing)
-	// sensor_time_sec *= 1.0025;
-
-	res = ros::Duration(sensor_time_sec);
-
-	ROS_INFO_STREAM_THROTTLE(1, "Sensor time: " << sensor_time << "\nROS Duration: " << res);
-
-	return res;
-}
-
-// Returns Yost sensor time converted to ROS time
+/* Returns Yost sensor time converted to ROS time
+*  @param sensor_time internal clock time of sensor in microseconds
+*/
 ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 {
-	// ros::Duration ros_sensor_time = toRosDuration(sensor_time);
-	ros::Duration ros_sensor_time = ros::Duration(sensor_time / 1000000);
+	ros::Duration ros_sensor_time = ros::Duration(0, sensor_time*1000);
 
 	if (ros_sensor_time.sec > 3)
 		syncTimeStamp();
@@ -594,9 +580,8 @@ ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 	// Add in 2x msg_latency to account for two messages -- initial sync message and current message
 	ros::Time result = ros_time_start_ + ros_sensor_time + ros::Duration(msg_latency_ * 2);
 
-	ROS_INFO_STREAM_THROTTLE(1,"Yost|ROS timestamp " << result);
-
 	if (debug_) {
+		ROS_INFO_STREAM_THROTTLE(1,"Yost|ROS timestamp " << result);
 		ros::Time now = ros::Time::now();
 		ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, result: %f, msg latency: %f\n\t\tage of data: %f sec",
 				now.toSec(), ros_sensor_time.toSec(), result.toSec(), msg_latency_, now.toSec()-result.toSec());
