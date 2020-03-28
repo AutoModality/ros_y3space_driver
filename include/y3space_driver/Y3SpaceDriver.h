@@ -67,23 +67,17 @@ public:
     //!
     void setMIMode(bool on);
 
-    //!
-    //! \brief initStream sets up the imu sensor in streaming mode
-    //!
-    //!
-    void initStream(void);
+    /**
+    * Poll and receive IMU message from sensor
+    * @param imu_msg imu sensor message return
+    * @return 0 if success
+    */
+    int getImuMessage(sensor_msgs::Imu& imu_msg);
+    
+    void syncCB(const ros::TimerEvent&);
 
-    //!
-    //! \brief readAndPublish it reads and publishes one imu reading
-    //!
-    //!
-    void readAndPublish(void);
-		
-		//!
-    //! \brief getStreamFrequency: it returns imu stream frequency
-    //!
-		int getStreamFrequency(void);
-		
+    void initDevice();
+
 private:
     // ROS Member Variables
     ros::NodeHandle m_nh;     ///< Nodehandle for the driver node
@@ -93,32 +87,70 @@ private:
     ros::Publisher m_rpyPub; ///<Publisher for IMU RPY messages>
     std::string m_mode;       ///< String indicating the desired driver mode
     std::string m_frame;      ///< The frame ID to broadcast to tf
+    sensor_msgs::Imu imu_msg_;
     bool debug_;
     int imu_frequency_;
+    bool magnetometer_enabled_;
+    double timestamp_offset_;
+    ros::Time ros_time_start_;
+    double msg_latency_ {0};
 
     std::pair<ros::Time, ros::Time> reference_time_;
+    bool time_synced_ = false;
 
     std::string getFrequencyMsg(int frequency);
     void getParams();
     geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
     geometry_msgs::Quaternion getQuaternion(double roll, double pitch, double yaw);
     geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
-
+    void resetTimeStamp();
+    void syncTimeStamp();
+		
+		template<class T>
+		std::vector<T> parseString(const std::string &src, char deliminator = ',')
+		{
+			std::stringstream ss(src);
+			T i;
+			std::vector<T> result;
+			//Wait for the beginning of the message
+			while (ss >> i)
+			{
+				result.push_back(i);
+				if (ss.peek() == ',')
+				{
+					ss.ignore();
+				}
+			}
+			return result;
+		}
+			
+		template<class T>	
+		void printVector(const std::vector<T> &src, const std::string &header = "message")
+		{
+			std::string message = "";
+			std::for_each(src.begin(), src.end(), [&](T x){message += std::to_string(x) + " ";});
+			ROS_INFO("%s: %s",header.c_str(),message.c_str());
+		}	
+				
     double getDegree(double rad);
     void setFrequency();
     void setStreamingSlots();
     void setHeader();
     void setSystemTime();
     void setAxisDirection();
+    void setMagnetometer(bool on);
+    const std::string getMagnetometerEnabled();
+    void setFilterMode();
     ros::Time getYostRosTime(long sensor_time);
     ros::Time toRosTime(double sensor_time);
-    ros::Time getReadingTime(double sensor_time);
+    ros::Duration toRosDuration(double sensor_time);
+    ros::Time getReadingTime(uint64_t sensor_time);
 
     static const std::string logger; ///< Logger tag
     
     static const std::string MODE_ABSOLUTE;
     static const std::string MODE_RELATIVE;
-
+		
     /*
      * Below is a list of commands that can be written via the
      * serialWrite() function to send raw commands to the 3-Space
@@ -136,6 +168,7 @@ private:
     static constexpr auto GET_TARED_ORIENTATION_AS_TWO_VECTOR        = ":4\n";
     static constexpr auto GET_DIFFERENCE_QUATERNION                  = ":5\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_QUATERNION      = ":6\n";
+    static constexpr auto GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER = ";6\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_EULER_ANGLES    = ":7\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_ROTATION_MATRIX = ":8\n";
     static constexpr auto GET_UNTARED_ORIENTATION_AS_AXIS_ANGLE      = ":9\n";
@@ -146,7 +179,9 @@ private:
     // Corrected Raw Data Commands
     static constexpr auto GET_ALL_CORRECTED_COMPONENT_SENSOR                = ":37\n";
     static constexpr auto GET_CORRECTED_GYRO_RATE                           = ":38\n";
+    static constexpr auto GET_CORRECTED_GYRO_RATE_WITH_HEADER               = ";38\n";
     static constexpr auto GET_CORRECTED_ACCELEROMETER_VECTOR                = ":39\n";
+    static constexpr auto GET_CORRECTED_ACCELEROMETER_VECTOR_WITH_HEADER    = ";39\n";
     static constexpr auto GET_CORRECTED_COMPASS_VECTOR                      = ":40\n";
     static constexpr auto GET_CORRECTED_LINEAR_ACCELERATION_IN_GLOBAL_SPACE = ":41\n";
     static constexpr auto CORRECT_RAW_GYRO_DATA                             = ":48\n";
@@ -155,6 +190,7 @@ private:
 
     // Misc. Raw Data Commands
     static constexpr auto GET_TEMPERATURE_C     = ":43\n";
+    static constexpr auto GET_TEMPERATURE_C_W_HEADER     = ";43\n";
     static constexpr auto GET_TEMPERATURE_F     = ":44\n";
     static constexpr auto GET_CONFIDENCE_FACTOR = ":45\n";
 
@@ -165,9 +201,13 @@ private:
     static constexpr auto GET_RAW_COMPASS_DATA              = ":67\n";
 
     // Streaming Commands
+    static constexpr auto SET_REFERENCE_VECTOR_SINGLE				= ":105,1\n";
+    static constexpr auto SET_REFERENCE_VECTOR_CONTINUOUS		= ":105,2\n";
     //according to http://yeitechnology.freshdesk.com/support/discussions/topics/1000056170 and the user manual, timestamp command is the following
     static constexpr auto SET_TIME_STAMP_REQUEST				= ";221,2\n";
-    static constexpr auto GET_HEADER_SETTING					= ":222\n";
+    // Sets the wired response header to return success byte and timestamp
+    static constexpr auto SET_HEADER_TS_SUCCESS				  = ":221,3\n";
+    static constexpr auto GET_HEADER_SETTING					  = ":222\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER_TEMP        = ":80,1,43,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_EULER_QUATERNION  = ":80,1,0,255,255,255,255,255,255\n";
     static constexpr auto SET_STREAMING_SLOTS_QUATERNION_EULER  = ":80,0,1,255,255,255,255,255,255\n";
@@ -195,13 +235,18 @@ private:
     static constexpr auto GET_STREAMING_BATCH                   = ":84\n";
     static constexpr auto START_STREAMING                       = ";85\n";
     static constexpr auto STOP_STREAMING                        = ":86\n";
-    static constexpr auto UPDATE_CURRENT_TIMESTAMP              = ":95\n";
+    static constexpr auto UPDATE_CURRENT_TIMESTAMP              = ":95,0\n";
+		static constexpr auto SET_FILTER_MODE_KALMAN								= ":123,1\n";
+		static constexpr auto SET_FILTER_MODE_QGRAD								  = ":123,5\n";
+	
+
 
     // Settings Configuration READ Commands
     static constexpr auto GET_AXIS_DIRECTION           = ":143\n";
     static constexpr auto GET_FILTER_MODE              = ":152\n";
     static constexpr auto GET_EULER_DECOMPOSTION_ORDER = ":156\n";
     static constexpr auto GET_MI_MODE_ENABLED          = ":136\n";
+    static constexpr auto GET_MAGNETOMETER_ENABLED     = ":142\n";
 
     // Settings Configuration WRITE Commands
     static constexpr auto SET_EULER_ANGLE_DECOMP_ORDER_XYZ = ":16,0\n";
@@ -213,6 +258,8 @@ private:
     static constexpr auto OFFSET_WITH_CURRENT_ORIENTATION  = ":19\n";
     static constexpr auto TARE_WITH_CURRENT_ORIENTATION    = ":96\n";
     static constexpr auto TARE_WITH_CURRENT_QUATERNION     = ":97\n";
+    static constexpr auto SET_MAGNETOMETER_DISABLED        = ":109,0\n";
+    static constexpr auto SET_MAGNETOMETER_ENABLED         = ":109,1\n";
     static constexpr auto SET_MI_MODE_ENABLED              = ":112,1\n";
     static constexpr auto SET_MI_MODE_DISABLED             = ":112,0\n";
     static constexpr auto BEGIN_MI_MODE_FIELD_CALIBRATION  = ":114\n";

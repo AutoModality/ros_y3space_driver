@@ -4,5 +4,5 @@
     	<rosparam command="load" file="$(find y3space_driver)/config/y3space.yaml" />
    	</node>
 	
-	<include file="$(find ouster_ros)/os1_top_rotate90_pitch41_acsl.launch"/>
+	<include file="$(find ouster_ros)/launch/os1_top_roll90_pitch41_acsl.launch"/>
 </launch>
