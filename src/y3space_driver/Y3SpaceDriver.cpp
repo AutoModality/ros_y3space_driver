@@ -399,10 +399,14 @@ ros::Time Y3SpaceDriver::getReadingTime(uint64_t sensor_time)
 	ros::Time result = ros_time_start_ + ros_sensor_time + ros::Duration(msg_latency_ * 2);
 
 	if (debug_) {
-		ROS_INFO_STREAM_THROTTLE(1,"Yost|ROS timestamp " << result);
 		ros::Time now = ros::Time::now();
-		ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, result: %f, msg latency: %f\n\t\tage of data: %f sec",
-				now.toSec(), ros_sensor_time.toSec(), result.toSec(), msg_latency_, now.toSec()-result.toSec());
+        double delay = now.toSec()-result.toSec();
+        if (delay < -0.004)
+            ROS_ERROR_STREAM("time delay negative! " << delay);
+
+		ROS_INFO_THROTTLE(1,"\tros_time_start: %f", ros_time_start_.toSec());
+		ROS_INFO_THROTTLE(1,"\tRaw Sensor Time: %f, result: %f, msg latency: %f\n\t\tage of data: %f sec",
+				ros_sensor_time.toSec(), result.toSec(), msg_latency_, delay);
 	}
 	
 	return result;
