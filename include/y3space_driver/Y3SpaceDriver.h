@@ -144,7 +144,7 @@ private:
     ros::Time getYostRosTime(long sensor_time);
     ros::Time toRosTime(double sensor_time);
     ros::Duration toRosDuration(double sensor_time);
-    ros::Time getReadingTime(double sensor_time);
+    ros::Time getReadingTime(uint64_t sensor_time);
 
     static const std::string logger; ///< Logger tag
     

@@ -578,9 +578,10 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 /* Returns Yost sensor time converted to ROS time
 *  @param sensor_time internal clock time of sensor in microseconds
 */
-ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
+ros::Time Y3SpaceDriver::getReadingTime(uint64_t sensor_time)
 {
-	ros::Duration ros_sensor_time = ros::Duration(0, sensor_time*1000);
+	ros::Duration ros_sensor_time;
+    ros_sensor_time.fromNSec(sensor_time*1000);
 
 	if (ros_sensor_time.sec > 3)
 		syncTimeStamp();
