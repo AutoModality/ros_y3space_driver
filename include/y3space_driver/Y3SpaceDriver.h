@@ -66,7 +66,13 @@ public:
     //! \param on True to set , False to Unset
     //!
     void setMIMode(bool on);
-    sensor_msgs::Imu &getImuMessage();
+
+    /**
+    * Poll and receive IMU message from sensor
+    * @param imu_msg imu sensor message return
+    * @return 0 if success
+    */
+    int getImuMessage(sensor_msgs::Imu& imu_msg);
     
     void syncCB(const ros::TimerEvent&);
 

@@ -40,32 +40,9 @@ void imu_thread_function(long timeout)
 	while(!stop_signal)
 	{
 		//Here You can process and publish IMU data with smart pointer imu_device
-		imu_publisher.publish(imu_device->getImuMessage());
-
-
-
-		int internal_frequency = getFrequency();
-		if(internal_frequency > -1)
-		{
-			int diff_freq = frequency - internal_frequency;
-			/*ROS_INFO("Thread Frequency: %d, Frequency Diff: %d Current Timeout: %d", internal_frequency, diff_freq, (int)timeout);
-
-			if(diff_freq < -10)
-			{
-				timeout += timeout_adjuster;//-1000000/diff_freq;
-				ROS_INFO("new timeout: %d", (int)timeout);
-			}
-			else if(diff_freq > 10)
-			{
-				timeout -= timeout_adjuster;//(1000000/diff_freq)/2;
-				ROS_INFO("new timeout: %d", (int)timeout);
-			}
-			if(timeout <= 0)
-			{
-				timeout = 1;
-			}*/
-		}
-
+		sensor_msgs::Imu imu;
+		if (!imu_device->getImuMessage(imu))
+			imu_publisher.publish(imu);
 		usleep(1);
 	}
 }

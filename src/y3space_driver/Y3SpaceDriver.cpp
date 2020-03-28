@@ -26,7 +26,7 @@ Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const st
     //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::Vector3Stamped>("/imu/rpy", 10);
 }
 
-sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
+int Y3SpaceDriver::getImuMessage(sensor_msgs::Imu &imu_msg)
 {
 	//We assume the device is initialized
 	//Getting untared orientation as Quaternion
@@ -45,23 +45,31 @@ sensor_msgs::Imu &Y3SpaceDriver::getImuMessage()
 
 	// Prepare IMU message
 	ros::Time sensor_time = getReadingTime(quaternion_arr[1]);
-	imu_msg_.header.stamp           = sensor_time;
+    if (sensor_time > ros::Time::now() + ros::Duration(0,4000000)) {
+        ROS_ERROR_STREAM("Sensor time too far in future. Dropping.");
+        return -1;
+    }
 
-	imu_msg_.header.frame_id        = "body_FLU";
-	imu_msg_.orientation.x          = quaternion_arr[2];
-	imu_msg_.orientation.y          = quaternion_arr[3];
-	imu_msg_.orientation.z          = quaternion_arr[4];
-	imu_msg_.orientation.w          = quaternion_arr[5];
+	imu_msg.header.stamp           = sensor_time;
 	
-	imu_msg_.angular_velocity.x     = gyro_arr[0];
-	imu_msg_.angular_velocity.y     = gyro_arr[1];
-	imu_msg_.angular_velocity.z     = gyro_arr[2];
+	imu_msg.header.frame_id        = "body_FLU";
+	imu_msg.orientation.x          = quaternion_arr[2];
+	imu_msg.orientation.y          = quaternion_arr[3];
+	imu_msg.orientation.z          = quaternion_arr[4];
+	imu_msg.orientation.w          = quaternion_arr[5];
 
-	imu_msg_.linear_acceleration.x  = 9.8*accel_arr[0];
-	imu_msg_.linear_acceleration.y  = 9.8*accel_arr[1];
-	imu_msg_.linear_acceleration.z  = 9.8*accel_arr[2];
+	imu_msg.angular_velocity.x     = gyro_arr[0];
+	imu_msg.angular_velocity.y     = gyro_arr[1];
+	imu_msg.angular_velocity.z     = gyro_arr[2];
 
-	return imu_msg_;
+	imu_msg.linear_acceleration.x  = 9.8*accel_arr[0];
+	imu_msg.linear_acceleration.y  = 9.8*accel_arr[1];
+	imu_msg.linear_acceleration.z  = 9.8*accel_arr[2];
+
+    if (debug_)
+        ROS_WARN_STREAM_THROTTLE(1, "Publishing IMU. ts: " << imu_msg.header.stamp);
+
+	return 0;
 }
 
 void Y3SpaceDriver::getParams()
