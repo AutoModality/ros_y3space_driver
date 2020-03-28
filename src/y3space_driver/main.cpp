@@ -55,6 +55,33 @@ void signal_handler(int signal)
 	exit(0);
 }
 
+//!
+//! IMU Thread Function
+//!
+void imu_thread_function()
+{
+	//Initialize
+	imu_driver->initStream();
+	int sleep_time = 1000000000/(2*imu_driver->getStreamFrequency() - 100);
+	while(!stop_signal)
+	{
+		imu_driver->readAndPublish();
+		ROS_INFO("sleep_time: %d", sleep_time);
+		usleep(sleep_time);
+	}
+}
+
+
+//!
+//! Signal Handler Method
+//!
+void signal_handler(int signal)
+{
+	stop_signal = true;
+	ros::shutdown();
+	exit(0);
+}
+
 int main(int argc, char **argv)
 {
 	signal(SIGINT, signal_handler);
