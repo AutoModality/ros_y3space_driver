@@ -35,8 +35,6 @@ int getFrequency()
 //!
 void imu_thread_function(long timeout)
 {
-	int cnt = 0;
-	int timeout_adjuster = 25;
 	while(!stop_signal)
 	{
 		//Here You can process and publish IMU data with smart pointer imu_device
@@ -64,7 +62,7 @@ int main(int argc, char **argv)
   	ros::NodeHandle nh;
   	ros::NodeHandle pnh("~");
 
-  	imu_publisher = nh.advertise<sensor_msgs::Imu>("/mavros/imu/data", 1);
+  	imu_publisher = nh.advertise<sensor_msgs::Imu>("/y3space/imu", 400);
 
   	std::string port;
   	int baudrate;
