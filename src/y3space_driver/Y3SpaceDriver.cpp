@@ -46,7 +46,7 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::Imu &imu_msg)
 	// Prepare IMU message
 	ros::Time sensor_time = getReadingTime(quaternion_arr[1]);
     if (sensor_time > ros::Time::now() + ros::Duration(0,4000000)) {
-        ROS_ERROR_STREAM("Sensor time too far in future. Dropping.");
+        ROS_DEBUG_STREAM("Sensor time too far in future. Dropping.");
         return -1;
     }
 
@@ -225,7 +225,7 @@ void Y3SpaceDriver::resetTimeStamp()
 {
 	this->serialWriteString(UPDATE_CURRENT_TIMESTAMP);
 	ros_time_start_ = ros::Time::now();
-	ROS_INFO_STREAM("RESETTING SENSOR TIME STAMP at " << ros_time_start_);
+	ROS_DEBUG_STREAM("RESETTING SENSOR TIME STAMP at " << ros_time_start_);
 }
 
 void Y3SpaceDriver::syncTimeStamp()
@@ -252,7 +252,8 @@ void Y3SpaceDriver::syncTimeStamp()
 	}
 
 	double average = std::accumulate( latency.begin(), latency.end(), 0.0) / latency.size();
-	ROS_INFO_STREAM(this->logger << "Average Yost IMU message latency is " << average);
+    if (debug_)
+    	ROS_INFO_STREAM(this->logger << "Average Yost IMU message latency is " << average);
 
 	msg_latency_ = average;
 }
