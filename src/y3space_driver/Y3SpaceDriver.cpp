@@ -1,3 +1,5 @@
+#include <numeric>
+
 #include <Y3SpaceDriver.h>
 
 
