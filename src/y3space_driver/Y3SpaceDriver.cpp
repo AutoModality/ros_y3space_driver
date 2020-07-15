@@ -241,9 +241,12 @@ void Y3SpaceDriver::initDevice()
 }
 
 void Y3SpaceDriver::resetTimeStamp()
-{
-	this->serialWriteString(UPDATE_CURRENT_TIMESTAMP);
+{		
+	this->serialWriteString(ZERO_CURRENT_TIMESTAMP);
 	ros_time_start_ = ros::Time::now();
+	
+	if (debug_)
+		std::cout << "Zeroing Y3Space time at ROS time: " << ros_time_start_;
 }
 
 void Y3SpaceDriver::setFilterMode()
@@ -584,8 +587,7 @@ ros::Time Y3SpaceDriver::getReadingTime(double sensor_time)
 
 	if (debug_) {
 		ros::Time now = ros::Time::now();
-		ROS_INFO_THROTTLE(1,"\tros_time_now: %f\n\t\tRaw Sensor Time: %f, result: %f\n\t\tage of data: %f sec",
-				now.toSec(), ros_sensor_time.toSec(), result.toSec(), now.toSec()-result.toSec());
+		ROS_INFO_THROTTLE(4,"\tage of data: %f sec", now.toSec()-result.toSec());
 	}
 	
 	return result;
