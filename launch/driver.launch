@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
 <launch>
-    <remap from="/y3space/imu" to="/dji_sdk/imu"/>
     <node pkg="y3space_driver" name="y3space_driver" type="y3space_driver"  output="screen">
     	<rosparam command="load" file="$(find y3space_driver)/config/y3space.yaml" />
    	</node>
