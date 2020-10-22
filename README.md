@@ -16,3 +16,15 @@ It was tested on the "Watertight" model using its RS232 interface.
 3. (After building) Launch the node using `roslaunch y3space_driver driver.launch` and the driver will begin to output messages on these topics:
 	* **/imu/filtered [sesnsor_msgs/Imu]** : Orientation, Angular Velocity, and Linear Acceleration
 	* **/imu/temp [std_msgs/Float64]** : The temperature in deg C as per the sensor
+
+# Debian Package Creation and Sharing
+
+Debian packages are created manually because this repository is not maintained by AutoModality and is not changed often.
+
+```
+amros dev build deb --clean --install
+```
+That will create the debian package and assign a version that will identify the build date/time and host.
+
+The package will be installed on machine for testing and validation.  
+Upload to [Cloudsmith|https://cloudsmith.io/~automodality/repos/dev/packages/] for sharing (`dev` first and move to `release` when ready). 
