@@ -72,5 +72,5 @@ target_link_libraries(y3space_driver
 install(DIRECTORY include/y3space_driver
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
 
-install(DIRECTORY launch
+install(DIRECTORY launch config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
