@@ -25,6 +25,9 @@ set(dependencies
         rosbag2_cpp
         am_utils
         serial
+        tf2
+        tf2_geometry_msgs
+        tf2_ros
       )
 
 foreach(Dependency IN ITEMS ${dependencies})

@@ -405,14 +405,13 @@ rclcpp::Time Y3SpaceDriver::toRosTime(double sensor_time)
 */
 rclcpp::Time Y3SpaceDriver::getReadingTime(uint64_t sensor_time)
 {
-	rclcpp::Duration ros_sensor_time;
-    ros_sensor_time.fromNSec(sensor_time*1000);
+	rclcpp::Duration ros_sensor_time(0, (sensor_time*1000));
 
-	if (ros_sensor_time.sec > 3)
+	if (ros_sensor_time.seconds() > 3.0)
 		syncTimeStamp();
 
 	// Add in 2x msg_latency to account for two messages -- initial sync message and current message
-	rclcpp::Time result = ros_time_start_ + ros_sensor_time + ros::Duration(msg_latency_ * 2);
+	rclcpp::Time result = ros_time_start_ + ros_sensor_time;// + rclcpp::Duration(msg_latency_ * 2);
 
 	if (debug_) {
         double delay = am::ClockNow().seconds()-result.seconds();
@@ -444,13 +443,11 @@ geometry_msgs::msg::Vector3 Y3SpaceDriver::getRPY(geometry_msgs::msg::Quaternion
 	return vect;
 }
 
-geometry_msgs::Quaternion Y3SpaceDriver::getQuaternion(double roll, double pitch, double yaw)
+geometry_msgs::msg::Quaternion Y3SpaceDriver::getQuaternion(double roll, double pitch, double yaw)
 {
-	tf::Quaternion q;
+	tf2::Quaternion q;
 	q.setRPY(roll,pitch,yaw);
-	geometry_msgs::Quaternion q_msg;
-	quaternionTFToMsg(q, q_msg);
-	return q_msg;
+	return tf2::toMsg(q);
 }
 
 geometry_msgs::msg::Quaternion Y3SpaceDriver::toENU(geometry_msgs::msg::Quaternion q)
@@ -459,10 +456,7 @@ geometry_msgs::msg::Quaternion Y3SpaceDriver::toENU(geometry_msgs::msg::Quaterni
 	tf2::Quaternion q_TF(0.0, 0.0, 0.707, 0.707);
 	tf2::Quaternion q_ENU = q_TF * q_FLU;
 
-	geometry_msgs::msg::Quaternion q_MSG;
-	quaternionTFToMsg(q_ENU, q_MSG);
-
-	return q_MSG;
+	return tf2::toMsg(q_ENU);
 }
 
 double Y3SpaceDriver::getDegree(double rad)
