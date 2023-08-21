@@ -1,19 +1,17 @@
 #ifndef _Y3SPACE_DRIVER_H
 #define _Y3SPACE_DRIVER_H
 
-#include <ros/ros.h>
-#include <sensor_msgs/Imu.h>
-#include <geometry_msgs/Vector3Stamped.h>
-#include <std_msgs/Float64.h>
-#include <SerialInterface.h>
+#include <sensor_msgs/msg/imu.hpp>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <y3space_driver/SerialInterface.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf/LinearMath/Quaternion.h>
-#include <tf/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <chrono>
 #include <ctime>
 #include <math.h>
+#include <am_utils/am_ros2_utility.h>
 
 
 //! \brief Yost Labs 3-Space ROS Driver Class
@@ -23,8 +21,7 @@ public:
     //!
     //! Constructor
     //!
-    Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const std::string &port,
-    		int baudrate, int timeout, const std::string &mode, const std::string &frame);
+    Y3SpaceDriver();
     //!
     //! Destructor
     //!
@@ -32,35 +29,35 @@ public:
     //!
     //! \brief run: runs system
     //!
-    void run(void);
+    void run();
     //!
     //! \brief getSoftwareVersion
     //! \return returns software string version
     //!
-    const std::string getSoftwareVersion(void);
+    const std::string getSoftwareVersion();
     //!
     //! \brief restoreFactorySettings resets everything
     //!
-    void restoreFactorySettings(void);
+    void restoreFactorySettings();
     //!
     //! \brief getAxisDirection
     //! \return returns axis directions
     //!
-    const std::string getAxisDirection(void);
+    const std::string getAxisDirection();
     //!
     //! \brief getCalibMode
     //! \return 0 for bias 1 for scale and bias
     //!
-    const std::string getCalibMode(void);
+    const std::string getCalibMode();
     //!
     //! \brief getMIMode
     //! \return 1 if enabled 0 if disabled
     //!
-    const std::string getMIMode(void);
+    const std::string getMIMode();
     //!
     //! \brief startGyroCalibration
     //!
-    void startGyroCalibration(void);
+    void startGyroCalibration();
     //!
     //! \brief setMIMode
     //! \param on True to set , False to Unset
@@ -72,37 +69,46 @@ public:
     * @param imu_msg imu sensor message return
     * @return 0 if success
     */
-    int getImuMessage(sensor_msgs::Imu& imu_msg);
+    int getImuMessage(sensor_msgs::msg::Imu& imu_msg);
     
-    void syncCB(const ros::TimerEvent&);
+    void syncCB();
 
     void initDevice();
 
 private:
     // ROS Member Variables
-    ros::NodeHandle m_nh;     ///< Nodehandle for the driver node
-    ros::NodeHandle m_pnh;    ///< Private Nodehandle for use with Serial Interface
-    ros::Publisher m_imuPub;  ///< Publisher for IMU messages
-    ros::Publisher m_tempPub; ///< Publisher for temperature messages
-    ros::Publisher m_rpyPub; ///<Publisher for IMU RPY messages>
-    std::string m_mode;       ///< String indicating the desired driver mode
-    std::string m_frame;      ///< The frame ID to broadcast to tf
-    sensor_msgs::Imu imu_msg_;
+   
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr m_imuPub;  ///< Publisher for IMU messages
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr m_tempPub; ///< Publisher for temperature messages
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr m_rpyPub; ///<Publisher for IMU RPY messages>
+    rclcpp::TimerBase::SharedPtr pub_timer_;
+
+    
+
+    std::string m_port = "/dev/ttyACM0";
+    std::string m_mode = "relative";
+    std::string m_frame = "imu_link";
+    std::string m_imu_topic = "/y3space/imu";
+    int m_baudrate = 115200;
+    int m_timeout = 60000;
+    int imu_frequency_ = 400;
+
+    sensor_msgs::msg::Imu imu_msg_;
+    
     bool debug_;
-    int imu_frequency_;
     bool magnetometer_enabled_;
     double timestamp_offset_;
-    ros::Time ros_time_start_;
+    rclcpp::Time ros_time_start_;
     double msg_latency_ {0};
 
-    std::pair<ros::Time, ros::Time> reference_time_;
+    std::pair<rclcpp::Time, rclcpp::Time> reference_time_;
     bool time_synced_ = false;
 
     std::string getFrequencyMsg(int frequency);
     void getParams();
-    geometry_msgs::Vector3 getRPY(geometry_msgs::Quaternion &q);
-    geometry_msgs::Quaternion getQuaternion(double roll, double pitch, double yaw);
-    geometry_msgs::Quaternion toENU(geometry_msgs::Quaternion q);
+    geometry_msgs::msg::Vector3 getRPY(geometry_msgs::msg::Quaternion &q);
+    geometry_msgs::msg::Quaternion getQuaternion(double roll, double pitch, double yaw);
+    geometry_msgs::msg::Quaternion toENU(geometry_msgs::msg::Quaternion q);
     void resetTimeStamp();
     void syncTimeStamp();
 		
@@ -141,10 +147,15 @@ private:
     void setMagnetometer(bool on);
     const std::string getMagnetometerEnabled();
     void setFilterMode();
-    ros::Time getYostRosTime(long sensor_time);
-    ros::Time toRosTime(double sensor_time);
-    ros::Duration toRosDuration(double sensor_time);
-    ros::Time getReadingTime(uint64_t sensor_time);
+    
+    
+    rclcpp::Time getYostRosTime(long sensor_time);
+    rclcpp::Time toRosTime(double sensor_time);
+    rclcpp::Duration toRosDuration(double sensor_time);
+    rclcpp::Time getReadingTime(uint64_t sensor_time);
+
+    void pubTimerCB();
+    
 
     static const std::string logger; ///< Logger tag
     

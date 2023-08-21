@@ -2,9 +2,8 @@
 #define _Y3Space_SERIAL_INTERFACE_H
 
 #include <malloc.h>
-#include <ros/ros.h>
 #include <serial/serial.h>
-
+#include <memory>
 using namespace serial;
 
 
@@ -20,9 +19,17 @@ public:
     //!  
     SerialInterface(std::string port, int baudrate, int timeout);
     //!
+    //! Constructor
+    //! 
+    SerialInterface();
+    //!
     //! Destructor
     //!
     virtual ~SerialInterface();
+
+    void initSerial(std::string port, int baudrate, int timeout);
+
+
     //!
     //! Establish serial connection
     //!
@@ -63,7 +70,10 @@ public:
     //!
     //! Getter for serial port
     //!
-    const std::string& getSerialPort() { return m_port; }
+    const std::string& getSerialPort() 
+    { 
+        return m_port; 
+    }
 
     void flushSerial();
 
@@ -87,6 +97,6 @@ private:
     //!
     //! logger zone
     //!
-    const std::string m_logger;
+    std::string m_logger;
 };
 #endif //_Y3Space_SERIAL_INTERFACE_H

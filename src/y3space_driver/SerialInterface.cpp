@@ -1,4 +1,5 @@
-#include <SerialInterface.h>
+#include <y3space_driver/SerialInterface.h>
+#include <am_utils/am_ros2_utility.h>
 
 SerialInterface::SerialInterface(std::string port, int baudrate, int timeout):
 	m_logger("[ Y3SSerialInterface ] ")
@@ -6,6 +7,11 @@ SerialInterface::SerialInterface(std::string port, int baudrate, int timeout):
     m_port = port;
     m_baudrate = baudrate;
     m_timeout = timeout;
+}
+
+SerialInterface::SerialInterface()
+{
+
 }
 
 SerialInterface::~SerialInterface()
@@ -18,6 +24,14 @@ SerialInterface::~SerialInterface()
         	m_connection->close();
       	}
     }
+}
+
+void SerialInterface::initSerial(std::string port, int baudrate, int timeout)
+{
+	m_logger = "[ Y3SSerialInterface ] ";
+	m_port = port;
+    m_baudrate = baudrate;
+    m_timeout = timeout;
 }
 
 void SerialInterface::serialConnect()

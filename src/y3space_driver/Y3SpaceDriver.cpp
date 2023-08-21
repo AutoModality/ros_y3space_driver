@@ -1,34 +1,40 @@
 #include <numeric>
 
-#include <Y3SpaceDriver.h>
+#include <y3space_driver/Y3SpaceDriver.h>
 
 
 const std::string Y3SpaceDriver::logger = "[ Y3SpaceDriver ] ";
 const std::string Y3SpaceDriver::MODE_ABSOLUTE = "absolute";
 const std::string Y3SpaceDriver::MODE_RELATIVE = "relative";
 
-Y3SpaceDriver::Y3SpaceDriver(ros::NodeHandle& nh, ros::NodeHandle& pnh, const std::string &port,
-		int baudrate, int timeout, const std::string &mode, const std::string &frame):
-    SerialInterface(port, baudrate, timeout),
-    m_pnh(pnh),
-    m_nh(nh),
-    m_mode(mode),
-    m_frame(frame),
-	debug_(false)
+Y3SpaceDriver::Y3SpaceDriver(): SerialInterface()
 {
 	getParams();
+
+    this->initSerial(m_port, m_baudrate, m_timeout);
 
     this->serialConnect();
 
     initDevice();
 
     ROS_INFO_STREAM(this->logger << "Ready\n");
-    //this->m_imuPub = this->m_nh.advertise<sensor_msgs::Imu>("/mavros/imu/data", 10);
-    //this->m_tempPub = this->m_nh.advertise<std_msgs::Float64>("/imu/temp", 10);
-    //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::Vector3Stamped>("/imu/rpy", 10);
+    m_imuPub = am::Node::node->create_publisher<sensor_msgs::msg::Imu>(m_imu_topic, 100);
+    //this->m_tempPub = this->m_nh.advertise<std_msgs::msg::Float64>("/imu/temp", 10);
+    //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::msg::Vector3Stamped>("/imu/rpy", 10);
+
+    pub_timer_ = am::Node::node->create_wall_timer(am::toDuration(0.005), std::bind(&Y3SpaceDriver::pubTimerCB, this));
 }
 
-int Y3SpaceDriver::getImuMessage(sensor_msgs::Imu &imu_msg)
+
+void Y3SpaceDriver::pubTimerCB()
+{
+    if(m_imuPub->get_subscription_count() == 0)
+    {
+        return;
+    }
+}
+
+int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 {
 	//We assume the device is initialized
 	//Getting untared orientation as Quaternion
@@ -46,8 +52,8 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::Imu &imu_msg)
 	std::vector<double>accel_arr = parseString<double>(accel_msg);
 
 	// Prepare IMU message
-	ros::Time sensor_time = getReadingTime(quaternion_arr[1]);
-    if (sensor_time > ros::Time::now() + ros::Duration(0,4000000)) {
+	rclcpp::Time sensor_time = getReadingTime(quaternion_arr[1]);
+    if (sensor_time > am::ClockNow() + rclcpp::Duration(0,4000000)) {
         ROS_DEBUG_STREAM("Sensor time too far in future. Dropping.");
         return -1;
     }
@@ -69,24 +75,32 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::Imu &imu_msg)
 	imu_msg.linear_acceleration.z  = 9.8*accel_arr[2];
 
     if (debug_)
-        ROS_WARN_STREAM_THROTTLE(1, "Publishing IMU. ts: " << imu_msg.header.stamp);
+        ROS_WARN_STREAM_THROTTLE(1.0, "Publishing IMU. ts: " << rclcpp::Time(imu_msg.header.stamp).seconds());
 
 	return 0;
 }
 
 void Y3SpaceDriver::getParams()
 {
-	m_pnh.param<int>("frequency", imu_frequency_, 400);
-	m_pnh.param<bool>("debug", debug_, false);
-	m_pnh.param<bool>("magnetometer_enabled", magnetometer_enabled_, true);
-	m_pnh.param<double>("timestamp_offset", timestamp_offset_, 0.012);
+	
+	am::getParam<bool>("debug", debug_, false);
+	am::getParam<bool>("magnetometer_enabled", magnetometer_enabled_, true);
+	am::getParam<double>("timestamp_offset", timestamp_offset_, 0.012);
+    am::getParam<std::string>("port", m_port, m_port);
+    am::getParam<std::string>("mode", m_mode, m_mode);
+    am::getParam<std::string>("frame", m_frame, m_frame);
+    am::getParam<int>("baudrate", m_baudrate, m_baudrate);
+    am::getParam<int>("timeout", m_timeout, m_timeout);
+    //am::getParam<int>("frequency", m_frequency, m_frequency);
+    am::getParam<int>("frequency", imu_frequency_, imu_frequency_);
+
+    //Create a non ros thread
+    long time_out = 1000000/imu_frequency_;
 }
 
-ros::Time Y3SpaceDriver::getYostRosTime(long sensor_time)
+rclcpp::Time Y3SpaceDriver::getYostRosTime(long sensor_time)
 {
-	ros::Time result;
-	result.nsec = sensor_time % 1000000;
-	result.sec = sensor_time / 1000000;
+	rclcpp::Time result(sensor_time % 1000000, sensor_time / 1000000);
 
 	return result;
 }
@@ -163,7 +177,7 @@ void Y3SpaceDriver::startGyroCalibration(void)
     ROS_INFO_STREAM(this->logger << "Starting Auto Gyro Calibration...");
     this->serialWriteString(BEGIN_GYRO_AUTO_CALIB);
   
-    ros::Duration(5.0).sleep();
+    //rclcpp::Duration(5.0).sleep();
     ROS_INFO_STREAM(this->logger << "Proceeding");
 }
 
@@ -226,8 +240,8 @@ void Y3SpaceDriver::initDevice()
 void Y3SpaceDriver::resetTimeStamp()
 {
 	this->serialWriteString(UPDATE_CURRENT_TIMESTAMP);
-	ros_time_start_ = ros::Time::now();
-	ROS_DEBUG_STREAM("RESETTING SENSOR TIME STAMP at " << ros_time_start_);
+	ros_time_start_ = am::ClockNow();
+	ROS_DEBUG_STREAM("RESETTING SENSOR TIME STAMP at " << ros_time_start_.seconds());
 }
 
 void Y3SpaceDriver::syncTimeStamp()
@@ -236,7 +250,7 @@ void Y3SpaceDriver::syncTimeStamp()
 	std::vector<double> sensor_time;
 	std::string sensor_msg;
 	std::vector<double>sensor_msg_arr;
-	ros::Time sensor_time_ros;
+	rclcpp::Time sensor_time_ros;
 
 	// Zero Yost time
 	this->resetTimeStamp();
@@ -248,9 +262,9 @@ void Y3SpaceDriver::syncTimeStamp()
 		sensor_msg = this->serialReadLine();
 		sensor_msg_arr = parseString<double>(sensor_msg);
 
-		sensor_time.push_back( sensor_msg_arr[1] / 1000000 );
+		sensor_time.push_back(sensor_msg_arr[1] / 1000000 );
 
-		latency.push_back ((ros::Time::now().toSec() - ros_time_start_.toSec() - sensor_time.back()) /2 );
+		latency.push_back ((am::ClockNow().seconds() - ros_time_start_.seconds() - sensor_time.back()) /2 );
 	}
 
 	double average = std::accumulate( latency.begin(), latency.end(), 0.0) / latency.size();
@@ -379,11 +393,9 @@ void Y3SpaceDriver::setAxisDirection()
 
 }
 
-ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
+rclcpp::Time Y3SpaceDriver::toRosTime(double sensor_time)
 {
-	ros::Time res;
-	res.sec = (long)sensor_time / 1000000;
-	res.nsec = ((long) sensor_time % 1000000) * 1000;
+	rclcpp::Time res(sensor_time / 1000000, ((long) sensor_time % 1000000) * 1000);
 
 	return res;
 }
@@ -391,34 +403,34 @@ ros::Time Y3SpaceDriver::toRosTime(double sensor_time)
 /* Returns Yost sensor time converted to ROS time
 *  @param sensor_time internal clock time of sensor in microseconds
 */
-ros::Time Y3SpaceDriver::getReadingTime(uint64_t sensor_time)
+rclcpp::Time Y3SpaceDriver::getReadingTime(uint64_t sensor_time)
 {
-	ros::Duration ros_sensor_time;
+	rclcpp::Duration ros_sensor_time;
     ros_sensor_time.fromNSec(sensor_time*1000);
 
 	if (ros_sensor_time.sec > 3)
 		syncTimeStamp();
 
 	// Add in 2x msg_latency to account for two messages -- initial sync message and current message
-	ros::Time result = ros_time_start_ + ros_sensor_time + ros::Duration(msg_latency_ * 2);
+	rclcpp::Time result = ros_time_start_ + ros_sensor_time + ros::Duration(msg_latency_ * 2);
 
 	if (debug_) {
-		ros::Time now = ros::Time::now();
-        double delay = now.toSec()-result.toSec();
+        double delay = am::ClockNow().seconds()-result.seconds();
         if (delay < -0.004)
+        {
             ROS_ERROR_STREAM("time delay negative! " << delay);
-
-		ROS_INFO_THROTTLE(1,"\tros_time_start: %f", ros_time_start_.toSec());
+        }
+		ROS_INFO_THROTTLE(1,"\tros_time_start: %f", ros_time_start_.seconds());
 		ROS_INFO_THROTTLE(1,"\tRaw Sensor Time: %f, result: %f, msg latency: %f\n\t\tage of data: %f sec",
-				ros_sensor_time.toSec(), result.toSec(), msg_latency_, delay);
+				ros_sensor_time.seconds(), result.seconds(), msg_latency_, delay);
 	}
 	
 	return result;
 }
 
-geometry_msgs::Vector3 Y3SpaceDriver::getRPY(geometry_msgs::Quaternion &q)
+geometry_msgs::msg::Vector3 Y3SpaceDriver::getRPY(geometry_msgs::msg::Quaternion &q)
 {
-	geometry_msgs::Vector3 vect;
+	geometry_msgs::msg::Vector3 vect;
 
 	/*tf2::Quaternion tf_q;
 	tf2::convert(q,tf_q);
@@ -441,13 +453,13 @@ geometry_msgs::Quaternion Y3SpaceDriver::getQuaternion(double roll, double pitch
 	return q_msg;
 }
 
-geometry_msgs::Quaternion Y3SpaceDriver::toENU(geometry_msgs::Quaternion q)
+geometry_msgs::msg::Quaternion Y3SpaceDriver::toENU(geometry_msgs::msg::Quaternion q)
 {
-	tf::Quaternion q_FLU(q.x, q.y, q.z, q.w);
-	tf::Quaternion q_TF(0.0, 0.0, 0.707, 0.707);
-	tf::Quaternion q_ENU = q_TF * q_FLU;
+	tf2::Quaternion q_FLU(q.x, q.y, q.z, q.w);
+	tf2::Quaternion q_TF(0.0, 0.0, 0.707, 0.707);
+	tf2::Quaternion q_ENU = q_TF * q_FLU;
 
-	geometry_msgs::Quaternion q_MSG;
+	geometry_msgs::msg::Quaternion q_MSG;
 	quaternionTFToMsg(q_ENU, q_MSG);
 
 	return q_MSG;
