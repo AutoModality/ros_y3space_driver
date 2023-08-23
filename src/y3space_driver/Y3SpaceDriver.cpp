@@ -89,6 +89,7 @@ void Y3SpaceDriver::getParams()
     am::getParam<std::string>("port", m_port, m_port);
     am::getParam<std::string>("mode", m_mode, m_mode);
     am::getParam<std::string>("frame", m_frame, m_frame);
+    am::getParam<std::string>("imu_topic", m_imu_topic, m_imu_topic);
     am::getParam<int>("baudrate", m_baudrate, m_baudrate);
     am::getParam<int>("timeout", m_timeout, m_timeout);
     //am::getParam<int>("frequency", m_frequency, m_frequency);

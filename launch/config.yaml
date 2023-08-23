@@ -1,0 +1,12 @@
+y3space_driver_node:
+  ros__parameters:
+    debug: true
+    magnetometer_enabled: true
+    timestamp_offset: 0.012
+    port: '/dev/ttyACM0'
+    mode: 'relative'
+    frame: 'imu_link'
+    imu_topic: '/y3space/imu'
+    baudrate: 115200
+    timeout: 60000
+    frequency: 400
