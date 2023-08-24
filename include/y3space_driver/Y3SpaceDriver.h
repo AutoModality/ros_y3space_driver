@@ -95,8 +95,9 @@ private:
 
     sensor_msgs::msg::Imu imu_msg_;
     
-    bool debug_;
-    bool magnetometer_enabled_;
+    bool debug_ {false};
+    bool magnetometer_enabled_ {false};
+    bool tared_ {false};
     double timestamp_offset_;
     rclcpp::Time ros_time_start_;
     double msg_latency_ {0};
@@ -145,6 +146,7 @@ private:
     void setSystemTime();
     void setAxisDirection();
     void setMagnetometer(bool on);
+    void tareDevice();
     const std::string getMagnetometerEnabled();
     void setFilterMode();
     
@@ -172,6 +174,7 @@ private:
     //static const double GRAVITY = 9.8;
 
     // Orientation Sensor Data Commands
+    static constexpr auto GET_TARED_ORIENTATION_AS_QUATERNION_WITH_HEADER = ";0\n";
     static constexpr auto GET_TARED_ORIENTATION_AS_QUATERNION        = ":0\n";
     static constexpr auto GET_TARED_ORIENTATION_AS_EULER_ANGLES      = ":1\n";
     static constexpr auto GET_TARED_ORIENTATION_AS_ROTATION_MATRIX   = ":2\n";

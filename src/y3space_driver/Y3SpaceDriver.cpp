@@ -46,8 +46,17 @@ void Y3SpaceDriver::pubTimerCB()
 int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 {
 	//We assume the device is initialized
-	//Getting untared orientation as Quaternion
-	this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
+    if(tared_)
+    {
+        //Getting tared orientation as Quaternion
+	    this->serialWriteString(GET_TARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
+    }
+    else
+    {
+        //Getting untared orientation as Quaternion
+	    this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
+    }
+	
 	std::string quaternion_msg = this->serialReadLine();
 	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
 
@@ -92,8 +101,9 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 void Y3SpaceDriver::getParams()
 {
 	
-	am::getParam<bool>("debug", debug_, false);
+	am::getParam<bool>("debug", debug_, debug_);
 	am::getParam<bool>("magnetometer_enabled", magnetometer_enabled_, magnetometer_enabled_);
+    am::getParam<bool>("tare", tared_, tared_);
 	am::getParam<double>("timestamp_offset", timestamp_offset_, 0.012);
     am::getParam<std::string>("port", m_port, m_port);
     am::getParam<std::string>("mode", m_mode, m_mode);
@@ -109,6 +119,7 @@ void Y3SpaceDriver::getParams()
 
     ROS_INFO("debug: %s", (debug_?"True":"False"));
     ROS_INFO("magnetometer_enabled_: %s", (magnetometer_enabled_?"True":"False"));
+    ROS_INFO("tared: %s", (tared_?"True":"False"));
     ROS_INFO("timestamp_offset: %f",timestamp_offset_);
     ROS_INFO("m_baudrate: %d",m_baudrate);
     ROS_INFO("m_timeout: %d",m_timeout);
@@ -195,11 +206,11 @@ const std::string Y3SpaceDriver::getAxisDirection()
 
 void Y3SpaceDriver::startGyroCalibration(void)
 {
-    ROS_INFO_STREAM(this->logger << "Starting Auto Gyro Calibration...");
+    ROS_INFO("Starting Auto Gyro Calibration...");
     this->serialWriteString(BEGIN_GYRO_AUTO_CALIB);
   
     //rclcpp::Duration(5.0).sleep();
-    ROS_INFO_STREAM(this->logger << "Proceeding");
+    ROS_INFO("Gyro calibration is completed");
 }
 
 void Y3SpaceDriver::setMIMode(bool on)
@@ -212,6 +223,11 @@ void Y3SpaceDriver::setMIMode(bool on)
     {
         this->serialWriteString(SET_MI_MODE_DISABLED);
     }
+}
+
+void Y3SpaceDriver::tareDevice()
+{
+    this->serialWriteString(TARE_WITH_CURRENT_ORIENTATION);
 }
 
 void Y3SpaceDriver::setMagnetometer(bool on)
@@ -233,11 +249,15 @@ void Y3SpaceDriver::setMagnetometer(bool on)
  */
 void Y3SpaceDriver::initDevice()
 {
-	//this->startGyroCalibration();
+	this->startGyroCalibration();
 	this->getSoftwareVersion();
 	this->setAxisDirection();
 	this->setHeader();
 	this->setMagnetometer(magnetometer_enabled_);
+    if(tared_)
+    {
+        this->tareDevice();
+    }
 	this->setFilterMode();
 	this->serialWriteString(SET_REFERENCE_VECTOR_CONTINUOUS);
 

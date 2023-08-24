@@ -2,6 +2,7 @@ y3space_imu:
   ros__parameters:
     debug: true
     magnetometer_enabled: false
+    tared: true
     timestamp_offset: 0.012
     port: '/dev/ttyACM0'
     mode: 'relative'
@@ -10,3 +11,4 @@ y3space_imu:
     baudrate: 115200
     timeout: 60000
     frequency: 400
+    
