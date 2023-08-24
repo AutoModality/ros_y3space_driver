@@ -15,7 +15,7 @@
 
 
 //! \brief Yost Labs 3-Space ROS Driver Class
-class Y3SpaceDriver: SerialInterface
+class Y3SpaceDriver: public SerialInterface
 {
 public:
     //!
