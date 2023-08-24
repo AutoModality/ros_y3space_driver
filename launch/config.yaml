@@ -9,5 +9,5 @@ y3space_imu:
     frame: 'imu_link'
     imu_topic: '/mavros/imu/data'
     baudrate: 115200
-    timeout: 60000
+    timeout: 500
     frequency: 400
