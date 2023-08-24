@@ -22,7 +22,7 @@ Y3SpaceDriver::Y3SpaceDriver(): SerialInterface()
     //this->m_tempPub = this->m_nh.advertise<std_msgs::msg::Float64>("/imu/temp", 10);
     //this->m_rpyPub = this->m_nh.advertise<geometry_msgs::msg::Vector3Stamped>("/imu/rpy", 10);
 
-    pub_timer_ = am::Node::node->create_wall_timer(am::toDuration(0.005), std::bind(&Y3SpaceDriver::pubTimerCB, this));
+    pub_timer_ = am::Node::node->create_wall_timer(am::toDuration(0.001), std::bind(&Y3SpaceDriver::pubTimerCB, this));
 }
 
 
@@ -32,6 +32,15 @@ void Y3SpaceDriver::pubTimerCB()
     {
         return;
     }
+
+    sensor_msgs::msg::Imu imu_msg;
+    if(getImuMessage(imu_msg) >= 0)
+    {
+        m_imuPub->publish(imu_msg);
+        return;
+    }
+    //ROS_WARN("Could not retrieve an imu message");
+    
 }
 
 int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
@@ -84,7 +93,7 @@ void Y3SpaceDriver::getParams()
 {
 	
 	am::getParam<bool>("debug", debug_, false);
-	am::getParam<bool>("magnetometer_enabled", magnetometer_enabled_, true);
+	am::getParam<bool>("magnetometer_enabled", magnetometer_enabled_, magnetometer_enabled_);
 	am::getParam<double>("timestamp_offset", timestamp_offset_, 0.012);
     am::getParam<std::string>("port", m_port, m_port);
     am::getParam<std::string>("mode", m_mode, m_mode);
@@ -97,6 +106,17 @@ void Y3SpaceDriver::getParams()
 
     //Create a non ros thread
     long time_out = 1000000/imu_frequency_;
+
+    ROS_INFO("debug: %s", (debug_?"True":"False"));
+    ROS_INFO("magnetometer_enabled_: %s", (magnetometer_enabled_?"True":"False"));
+    ROS_INFO("timestamp_offset: %f",timestamp_offset_);
+    ROS_INFO("m_baudrate: %d",m_baudrate);
+    ROS_INFO("m_timeout: %d",m_timeout);
+    ROS_INFO("imu_frequency_: %d",imu_frequency_);
+    ROS_INFO("m_port: %s",m_port.c_str());
+    ROS_INFO("m_mode: %s",m_mode.c_str());
+    ROS_INFO("frame: %s",m_frame.c_str());
+    ROS_INFO("m_imu_topic: %s",m_imu_topic.c_str());
 }
 
 rclcpp::Time Y3SpaceDriver::getYostRosTime(long sensor_time)

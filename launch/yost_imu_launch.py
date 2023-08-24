@@ -18,8 +18,9 @@ def generate_launch_description():
     yaml_file = get_package_share_directory('y3space_driver')+"/launch/config.yaml";
     
     y3space_driver_node = Node(
-                package='mavros',
+                package='y3space_driver',
                 executable='y3space_driver',
+                name='y3space_imu',
                 #output='screen',
                 emulate_tty=True,
                 #remappings=[
