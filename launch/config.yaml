@@ -1,6 +1,6 @@
 y3space_imu:
   ros__parameters:
-    debug: true
+    debug: false
     magnetometer_enabled: false
     tared: true
     timestamp_offset: 0.012
@@ -11,4 +11,3 @@ y3space_imu:
     baudrate: 115200
     timeout: 60000
     frequency: 400
-    
