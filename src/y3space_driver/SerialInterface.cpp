@@ -59,6 +59,7 @@ void SerialInterface::serialDisConnect()
 {
 	try
 	{
+		ROS_INFO("closing the %s port", m_port);
   		m_connection->close();
 	}
 	catch(IOException &e)

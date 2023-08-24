@@ -2,7 +2,7 @@ y3space_imu:
   ros__parameters:
     debug: false
     magnetometer_enabled: false
-    tared: true
+    tare: true
     timestamp_offset: 0.012
     port: '/dev/ttyACM0'
     mode: 'relative'
