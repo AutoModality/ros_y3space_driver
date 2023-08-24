@@ -1,17 +1,15 @@
 cmake_minimum_required(VERSION 3.5)
 project(y3space_driver)
 
-# Default to C99
-if(NOT CMAKE_C_STANDARD)
-  set(CMAKE_C_STANDARD 99)
+set(CMAKE_BUILD_TYPE Debug)
+
+if(POLICY CMP0074)
+    cmake_policy(SET CMP0074 NEW)
 endif()
 
-# Default to C++14
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-endif()
-
+#add_compile_options(-Wno-dev)
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  #comment the add_compile_options to deactivate the warnings as errors
   #add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
@@ -60,8 +58,9 @@ install(DIRECTORY include/
         DESTINATION include/
     )
     
-install(DIRECTORY launch/
-        DESTINATION share/${PROJECT_NAME}
+install(DIRECTORY
+        launch
+        DESTINATION share/${PROJECT_NAME}/
     )
 install(TARGETS
   y3space_driver
