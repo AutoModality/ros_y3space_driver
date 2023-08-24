@@ -1,6 +1,6 @@
 y3space_imu:
   ros__parameters:
-    debug: true
+    debug: false
     magnetometer_enabled: false
     timestamp_offset: 0.012
     port: '/dev/ttyACM0'
