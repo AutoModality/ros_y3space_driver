@@ -3,8 +3,8 @@
 #include <memory>
 #include <signal.h>
 #include <am_utils/am_ros2_utility.h>
-#include <iostream>
-#include <libusb-1.0/libusb.h>
+#include <cstdlib>
+
 std::string NODE_NAME_ = "Y3SpaceDriver";
 
 
@@ -16,54 +16,34 @@ std::shared_ptr<Y3SpaceDriver> y3_space_driver = nullptr;
 
 int reset_usb()
 {
-	libusb_context *ctx = nullptr;
-    libusb_device_handle *handle = nullptr;
+    ROS_INFO("RESETING THE USB");
+    const char *command = "sudo usb_modeswitch -R -v 0x2476 -p 0x1010"; // Replace with actual Vendor and Product IDs
+    int returnCode = std::system(command);
 
-    // Initialize libusb
-    if (libusb_init(&ctx) < 0) 
-	{
-        std::cerr << "Failed to initialize libusb" << std::endl;
-        return 1;
+    if (returnCode == 0) {
+        ROS_INFO("USB port reset successfully.");
+    } else {
+        ROS_INFO("USB port reset failed.");
     }
 
-    // Find the USB device by Vendor ID and Product ID
-    handle = libusb_open_device_with_vid_pid(ctx, 2476, 1010);
-    if (!handle) {
-        std::cerr << "Failed to find USB device" << std::endl;
-        libusb_exit(ctx);
-        return 1;
-    }
+    return returnCode;
+    ROS_INFO("USB device reset successfully");
 
-    // Reset the USB device
-    if (libusb_reset_device(handle) < 0) {
-        std::cerr << "Failed to reset USB device" << std::endl;
-        libusb_close(handle);
-        libusb_exit(ctx);
-        return 1;
-    }
-
-    // Clean up
-    libusb_close(handle);
-    libusb_exit(ctx);
-
-    std::cout << "USB device reset successfully" << std::endl;
-
-	return 0;
+    return 0;
 }
 
 void signal_handler(int signal)
-{	
+{
 
 	if(y3_space_driver)
 	{
 		ROS_INFO("Disconnecting from the serial port");
 		y3_space_driver->serialDisConnect();
 	}
-	
-	rclcpp::shutdown();
-
 
 	reset_usb();
+
+	rclcpp::shutdown();
 
 	exit(0);
 }
