@@ -41,7 +41,7 @@ void signal_handler(int signal)
 		y3_space_driver->serialDisConnect();
 	}
 
-	reset_usb();
+	//reset_usb();
 
 	rclcpp::shutdown();
 
