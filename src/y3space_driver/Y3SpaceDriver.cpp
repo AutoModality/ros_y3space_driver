@@ -46,7 +46,7 @@ void Y3SpaceDriver::pubTimerCB()
 int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 {
 	//We assume the device is initialized
-    if(tared_)
+    /*if(tared_)
     {
         //Getting tared orientation as Quaternion
 	    this->serialWriteString(GET_TARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
@@ -55,7 +55,9 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
     {
         //Getting untared orientation as Quaternion
 	    this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
-    }
+    }*/
+
+    this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
 	
 	std::string quaternion_msg = this->serialReadLine();
 	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
@@ -76,13 +78,32 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
         return -1;
     }
 
+    tf2::Quaternion q(quaternion_arr[2], quaternion_arr[3], quaternion_arr[4], quaternion_arr[5]);
+    if(tared_)
+    {
+        static tf2::Quaternion q_init;
+        static bool first_run = true;
+
+        if(first_run)
+        {
+            q_init = tf2::Quaternion(quaternion_arr[2], quaternion_arr[3], quaternion_arr[4], quaternion_arr[5]);
+
+            q_init = q_init.inverse();
+
+            first_run = false;
+        }
+
+        q = q*q_init;
+        q = q.normalize();
+    }
+
 	imu_msg.header.stamp           = sensor_time;
 	
 	imu_msg.header.frame_id        = "body_FLU";
-	imu_msg.orientation.x          = quaternion_arr[2];
-	imu_msg.orientation.y          = quaternion_arr[3];
-	imu_msg.orientation.z          = quaternion_arr[4];
-	imu_msg.orientation.w          = quaternion_arr[5];
+	imu_msg.orientation.x          = q.x();
+	imu_msg.orientation.y          = q.y();
+	imu_msg.orientation.z          = q.z();
+	imu_msg.orientation.w          = q.w();
 
 	imu_msg.angular_velocity.x     = gyro_arr[0];
 	imu_msg.angular_velocity.y     = gyro_arr[1];
@@ -254,10 +275,11 @@ void Y3SpaceDriver::initDevice()
 	this->setAxisDirection();
 	this->setHeader();
 	this->setMagnetometer(magnetometer_enabled_);
-    if(tared_)
+    /*if(tared_)
     {
+        //taring the device will reset the heading to the EAST using the Magnetometer 
         this->tareDevice();
-    }
+    }*/
 	this->setFilterMode();
 	this->serialWriteString(SET_REFERENCE_VECTOR_CONTINUOUS);
 
