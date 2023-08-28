@@ -4,7 +4,7 @@ y3space_imu:
     magnetometer_enabled: false
     tare: false
     timestamp_offset: 0.012
-    port: '/dev/ttyACM0'
+    port: '/dev/ttyYOST0'
     mode: 'relative'
     frame: 'imu_link'
     imu_topic: '/mavros/imu/data'
