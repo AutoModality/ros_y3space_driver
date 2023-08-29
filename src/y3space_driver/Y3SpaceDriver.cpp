@@ -99,7 +99,7 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 
 	imu_msg.header.stamp           = sensor_time;
 	
-	imu_msg.header.frame_id        = "body_FLU";
+	imu_msg.header.frame_id        = m_frame;
 	imu_msg.orientation.x          = q.x();
 	imu_msg.orientation.y          = q.y();
 	imu_msg.orientation.z          = q.z();

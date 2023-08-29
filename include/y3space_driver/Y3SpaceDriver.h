@@ -87,7 +87,7 @@ private:
 
     std::string m_port = "/dev/ttyACM0";
     std::string m_mode = "relative";
-    std::string m_frame = "imu_link";
+    std::string m_frame = "yost_imu";
     std::string m_imu_topic = "/y3space/imu";
     int m_baudrate = 115200;
     int m_timeout = 60000;

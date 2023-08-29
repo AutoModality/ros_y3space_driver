@@ -6,7 +6,7 @@ y3space_imu:
     timestamp_offset: 0.012
     port: '/dev/ttyYOST0'
     mode: 'relative'
-    frame: 'imu_link'
+    frame: 'yost_imu'
     imu_topic: '/mavros/imu/data'
     baudrate: 115200
     timeout: 500
