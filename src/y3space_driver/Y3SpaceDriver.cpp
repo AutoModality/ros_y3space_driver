@@ -93,7 +93,7 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
             first_run = false;
         }
 
-        q = q*q_init;
+        q = q_init*q;
         q = q.normalize();
     }
 
