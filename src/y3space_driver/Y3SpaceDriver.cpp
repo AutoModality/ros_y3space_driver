@@ -97,8 +97,15 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
         q = q.normalize();
     }
 
+
+    //if hyperspace is detected return
+    if(isHyperspaced(q))
+    {
+        return -1;
+    }
+    
+
 	imu_msg.header.stamp           = sensor_time;
-	
 	imu_msg.header.frame_id        = m_frame;
 	imu_msg.orientation.x          = q.x();
 	imu_msg.orientation.y          = q.y();
@@ -117,6 +124,32 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
         ROS_WARN_STREAM_THROTTLE(1.0, "Publishing IMU. ts: " << rclcpp::Time(imu_msg.header.stamp).seconds());
 
 	return 0;
+}
+
+bool Y3SpaceDriver::isHyperspaced(tf2::Quaternion &q)
+{
+    static bool isFirstRun = true;
+    am::Rotate::getRPY(q, current_.roll, current_.pitch, current_.yaw); 
+
+    if(isFirstRun)
+    {
+        isFirstRun = false;
+        old_ = current_;
+        return false;
+    }
+    
+    Y3SpaceDriver::Orientation delta;
+    delta.roll = abs(current_.roll - old_.roll);
+    delta.pitch = abs(current_.pitch - old_.pitch);
+    delta.yaw = abs(current_.yaw - old_.yaw);
+
+    if(delta.roll > hyperspace_th_deg_ || delta.pitch > hyperspace_th_deg_ || delta.yaw > hyperspace_th_deg_)
+    {
+        ROS_WARN("Hyperspace in IMU is detected (dropping frame): d_roll: %f, d_pitch: %f, d_yaw: %f", delta.roll, delta.pitch, delta.yaw);
+        return true;
+    }
+
+    return false;
 }
 
 void Y3SpaceDriver::getParams()

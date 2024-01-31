@@ -12,12 +12,21 @@
 #include <ctime>
 #include <math.h>
 #include <am_utils/am_ros2_utility.h>
+#include <vb_util_lib/rotate.h>
 
 
 //! \brief Yost Labs 3-Space ROS Driver Class
 class Y3SpaceDriver: public SerialInterface
 {
 public:
+
+    struct Orientation
+    {
+      double roll {0.0};
+      double pitch {0.0};
+      double yaw {0.0};
+    };
+
     //!
     //! Constructor
     //!
@@ -83,7 +92,8 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr m_rpyPub; ///<Publisher for IMU RPY messages>
     rclcpp::TimerBase::SharedPtr pub_timer_;
 
-    
+    Orientation old_, current_;
+    double hyperspace_th_deg_ {5.0};
 
     std::string m_port = "/dev/ttyACM0";
     std::string m_mode = "relative";
@@ -149,6 +159,8 @@ private:
     void tareDevice();
     const std::string getMagnetometerEnabled();
     void setFilterMode();
+
+    bool isHyperspaced(tf2::Quaternion &q);
     
     
     rclcpp::Time getYostRosTime(long sensor_time);
