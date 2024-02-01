@@ -131,6 +131,7 @@ bool Y3SpaceDriver::isHyperspaced(tf2::Quaternion &q)
     static bool isFirstRun = true;
     am::Rotate::getRPY(q, current_.roll, current_.pitch, current_.yaw); 
 
+    //for the first run
     if(isFirstRun)
     {
         isFirstRun = false;
@@ -138,17 +139,22 @@ bool Y3SpaceDriver::isHyperspaced(tf2::Quaternion &q)
         return false;
     }
     
+    //calculate delta
     Y3SpaceDriver::Orientation delta;
     delta.roll = abs(current_.roll - old_.roll);
     delta.pitch = abs(current_.pitch - old_.pitch);
     delta.yaw = abs(current_.yaw - old_.yaw);
 
+    //check for hyperspace
     if(delta.roll > hyperspace_th_deg_ || delta.pitch > hyperspace_th_deg_ || delta.yaw > hyperspace_th_deg_)
     {
         ROS_WARN("Hyperspace in IMU is detected (dropping frame): d_roll: %f, d_pitch: %f, d_yaw: %f", delta.roll, delta.pitch, delta.yaw);
         return true;
     }
 
+
+    //update the old
+    old_ = current_;
     return false;
 }
 
