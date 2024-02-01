@@ -98,12 +98,17 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
     }
 
 
+    double roll = 0.0, pitch = 0.0, yaw = 0.0;
+    am::Rotate::getRPY(q, roll, pitch, yaw);
+
     //if hyperspace is detected return
-    if(isHyperspaced(q))
+    if(isHyperspaced(roll, pitch, yaw))
     {
         return -1;
     }
+
     
+    checkLimits(roll, pitch, yaw);
 
 	imu_msg.header.stamp           = sensor_time;
 	imu_msg.header.frame_id        = m_frame;
@@ -121,15 +126,33 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 	imu_msg.linear_acceleration.z  = 9.8*accel_arr[2];
 
     if (debug_)
+    {
         ROS_WARN_STREAM_THROTTLE(1.0, "Publishing IMU. ts: " << rclcpp::Time(imu_msg.header.stamp).seconds());
-
+    }
+    
 	return 0;
 }
 
-bool Y3SpaceDriver::isHyperspaced(tf2::Quaternion &q)
+void Y3SpaceDriver::checkLimits(double roll, double pitch, double yaw)
+{
+    if(abs(roll) > roll_limit_deg_)
+    {
+        roll_off_limit_cnt_++;
+        ROS_WARN_THROTTLE(5.0, "Yost ROLL is beyond limit %f. Count: %d", roll, roll_off_limit_cnt_);
+    }
+    if(abs(pitch) > pitch_limit_deg_)
+    {
+        pitch_off_limit_cnt_++;
+        ROS_WARN_THROTTLE(5.0, "Yost PITCH is beyond limit %f. Count: %d", pitch, pitch_off_limit_cnt_);
+    }
+}
+
+bool Y3SpaceDriver::isHyperspaced(double roll, double pitch, double yaw)
 {
     static bool isFirstRun = true;
-    am::Rotate::getRPY(q, current_.roll, current_.pitch, current_.yaw); 
+    current_.roll = roll;
+    current_.pitch = pitch;
+    current_.yaw = yaw;
 
     //for the first run
     if(isFirstRun)
@@ -173,6 +196,10 @@ void Y3SpaceDriver::getParams()
     am::getParam<int>("timeout", m_timeout, m_timeout);
     //am::getParam<int>("frequency", m_frequency, m_frequency);
     am::getParam<int>("frequency", imu_frequency_, imu_frequency_);
+
+    am::getParam<double>("hyperspace_th_deg", hyperspace_th_deg_,hyperspace_th_deg_);
+    am::getParam<double>("pitch_limit_deg", pitch_limit_deg_, pitch_limit_deg_);
+    am::getParam<double>("roll_limit_deg", roll_limit_deg_, roll_limit_deg_);
 
     //Create a non ros thread
     long time_out = 1000000/imu_frequency_;

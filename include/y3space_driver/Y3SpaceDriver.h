@@ -94,6 +94,10 @@ private:
 
     Orientation old_, current_;
     double hyperspace_th_deg_ {5.0};
+    double pitch_limit_deg_ {2.0};
+    double roll_limit_deg_ {2.0};
+    int roll_off_limit_cnt_ {0};
+    int pitch_off_limit_cnt_ {0};
 
     std::string m_port = "/dev/ttyACM0";
     std::string m_mode = "relative";
@@ -160,7 +164,8 @@ private:
     const std::string getMagnetometerEnabled();
     void setFilterMode();
 
-    bool isHyperspaced(tf2::Quaternion &q);
+    bool isHyperspaced(double roll, double pitch, double yaw);
+    void checkLimits(double roll, double pitch, double yaw);
     
     
     rclcpp::Time getYostRosTime(long sensor_time);
