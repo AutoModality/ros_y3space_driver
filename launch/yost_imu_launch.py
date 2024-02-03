@@ -15,7 +15,7 @@ import subprocess
         
 def generate_launch_description():
     
-    yaml_file = get_package_share_directory('y3space_driver')+"/launch/config.yaml";
+    yaml_file = get_package_share_directory('y3space_driver')+"/launch/config.yaml"
     
     y3space_driver_node = Node(
                 package='y3space_driver',

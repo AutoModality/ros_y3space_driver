@@ -1,11 +1,12 @@
 y3space_imu:
   ros__parameters:
     debug: false
-    magnetometer_enabled: false
+    magnetometer_enabled: true
     tare: false
     timestamp_offset: 0.012
     port: '/dev/ttyYOST0'
     mode: 'relative'
+    mi_mode: true
     frame: 'yost_imu'
     imu_topic: '/mavros/imu/data'
     baudrate: 115200

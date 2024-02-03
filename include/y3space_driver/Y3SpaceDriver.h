@@ -101,6 +101,7 @@ private:
     double timestamp_offset_;
     rclcpp::Time ros_time_start_;
     double msg_latency_ {0};
+    bool mi_mode_ {false};
 
     std::pair<rclcpp::Time, rclcpp::Time> reference_time_;
     bool time_synced_ = false;

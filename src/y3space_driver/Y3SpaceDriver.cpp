@@ -109,6 +109,7 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
 	imu_msg.angular_velocity.y     = gyro_arr[1];
 	imu_msg.angular_velocity.z     = gyro_arr[2];
 
+    // Corrected acceleration values are in units of 'g'
 	imu_msg.linear_acceleration.x  = 9.8*accel_arr[0];
 	imu_msg.linear_acceleration.y  = 9.8*accel_arr[1];
 	imu_msg.linear_acceleration.z  = 9.8*accel_arr[2];
@@ -134,6 +135,7 @@ void Y3SpaceDriver::getParams()
     am::getParam<int>("timeout", m_timeout, m_timeout);
     //am::getParam<int>("frequency", m_frequency, m_frequency);
     am::getParam<int>("frequency", imu_frequency_, imu_frequency_);
+    am::getParam<bool>("mi_mode", mi_mode_, mi_mode_);
 
     //Create a non ros thread
     long time_out = 1000000/imu_frequency_;
@@ -149,6 +151,7 @@ void Y3SpaceDriver::getParams()
     ROS_INFO("m_mode: %s",m_mode.c_str());
     ROS_INFO("frame: %s",m_frame.c_str());
     ROS_INFO("m_imu_topic: %s",m_imu_topic.c_str());
+    ROS_INFO("mi_mode: %s",(mi_mode_?"True":"False"));
 }
 
 rclcpp::Time Y3SpaceDriver::getYostRosTime(long sensor_time)
@@ -275,6 +278,7 @@ void Y3SpaceDriver::initDevice()
 	this->setAxisDirection();
 	this->setHeader();
 	this->setMagnetometer(magnetometer_enabled_);
+    this->setMIMode(magnetometer_enabled_ && mi_mode_);
     /*if(tared_)
     {
         //taring the device will reset the heading to the EAST using the Magnetometer 
