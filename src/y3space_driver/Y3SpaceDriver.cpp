@@ -59,16 +59,15 @@ bool Y3SpaceDriver::onCleanup()
 
 void Y3SpaceDriver::pubTimerCB()
 {
-    if(m_imuPub->get_subscription_count() == 0)
-    {
-        return;
-    }
-
     sensor_msgs::msg::Imu imu_msg;
     if(getImuMessage(imu_msg) >= 0)
     {
-        m_imuPub->publish(imu_msg);
         yost_stats_->imu_pub++;
+        if(m_imuPub->get_subscription_count() == 0)
+        {
+            return;
+        }
+        m_imuPub->publish(imu_msg);
         //yost_stats_->statStatus
         return;
     }
