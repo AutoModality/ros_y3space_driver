@@ -30,6 +30,9 @@ void Y3SpaceDriver::initialize()
 
     initDevice();
 
+    status_sub_ = am::Node::node->create_subscription<std_msgs::msg::Int32>(std::string(am::Node::node->get_name()) + "/status", 100, std::bind(&Y3SpaceDriver::statusCB, this, std::placeholders::_1));
+    stat_sub_ = am::Node::node->create_subscription<std_msgs::msg::Int32>(std::string(am::Node::node->get_name()) + "/stat", 100, std::bind(&Y3SpaceDriver::statCB, this, std::placeholders::_1));
+
     ROS_INFO_STREAM(this->logger << "Ready\n");
     m_imuPub = am::Node::node->create_publisher<sensor_msgs::msg::Imu>(m_imu_topic, 100);
     //this->m_tempPub = this->m_nh.advertise<std_msgs::msg::Float64>("/imu/temp", 10);
@@ -56,6 +59,16 @@ bool Y3SpaceDriver::onCleanup()
     //return AMLifeCycle::onCleanup();
     return true;
 }
+
+void Y3SpaceDriver::statusCB(const std_msgs::msg::Int32::SharedPtr msg)
+{
+    yost_stats_->statStatus = msg->data;
+}
+void Y3SpaceDriver::statCB(const std_msgs::msg::Int32::SharedPtr msg)
+{
+
+}
+
 
 void Y3SpaceDriver::pubTimerCB()
 {

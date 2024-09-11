@@ -13,6 +13,7 @@
 #include <math.h>
 #include <am_utils/am_ros2_utility.h>
 #include <y3space_driver/yost_stats.h>
+#include <std_msgs/msg/int32.hpp>
 
 namespace am
 {
@@ -99,6 +100,12 @@ private:
     rclcpp::TimerBase::SharedPtr pub_timer_;
 
     std::shared_ptr<YostStats> yost_stats_ = nullptr;
+
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr status_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr stat_sub_;
+
+    void statusCB(const std_msgs::msg::Int32::SharedPtr msg);
+    void statCB(const std_msgs::msg::Int32::SharedPtr msg);
 
     std::string m_port = "/dev/ttyACM0";
     std::string m_mode = "relative";
