@@ -30,6 +30,7 @@ int main(int argc, char ** argv)
     am::Node::node = yost_node;
 
     yost_class = std::make_shared<am::Y3SpaceDriver>(yost_stats);
+    yost_class->initialize();
     yost_node->setClass(yost_class);
 
     ROS_INFO_STREAM(am::Node::node->get_name() << ": running...");
