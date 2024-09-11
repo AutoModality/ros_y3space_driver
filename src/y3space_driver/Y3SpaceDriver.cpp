@@ -101,67 +101,76 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
         //Getting untared orientation as Quaternion
 	    this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
     }*/
-
-    this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
-	
-	std::string quaternion_msg = this->serialReadLine();
-	std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
-
-	this->serialWriteString(GET_CORRECTED_GYRO_RATE);
-	std::string gyro_msg = this->serialReadLine();
-	std::vector<double>gyro_arr = parseString<double>(gyro_msg);
-
-
-	this->serialWriteString(GET_CORRECTED_ACCELEROMETER_VECTOR);
-	std::string accel_msg = this->serialReadLine();
-	std::vector<double>accel_arr = parseString<double>(accel_msg);
-
-	// Prepare IMU message
-	rclcpp::Time sensor_time = getReadingTime(quaternion_arr[1]);
-    if (sensor_time > am::ClockNow() + rclcpp::Duration(0,4000000)) {
-        ROS_DEBUG_STREAM("Sensor time too far in future. Dropping.");
-        return -1;
-    }
-
-    tf2::Quaternion q(quaternion_arr[2], quaternion_arr[3], quaternion_arr[4], quaternion_arr[5]);
-    if(tared_)
+    try
     {
-        static tf2::Quaternion q_init;
-        static bool first_run = true;
+        this->serialWriteString(GET_UNTARED_ORIENTATION_AS_QUATERNION_WITH_HEADER);
+	
+        std::string quaternion_msg = this->serialReadLine();
+        std::vector<double>quaternion_arr = parseString<double>(quaternion_msg);	
 
-        if(first_run)
-        {
-            q_init = tf2::Quaternion(quaternion_arr[2], quaternion_arr[3], quaternion_arr[4], quaternion_arr[5]);
+        this->serialWriteString(GET_CORRECTED_GYRO_RATE);
+        std::string gyro_msg = this->serialReadLine();
+        std::vector<double>gyro_arr = parseString<double>(gyro_msg);
 
-            q_init = q_init.inverse();
 
-            first_run = false;
+        this->serialWriteString(GET_CORRECTED_ACCELEROMETER_VECTOR);
+        std::string accel_msg = this->serialReadLine();
+        std::vector<double>accel_arr = parseString<double>(accel_msg);
+
+        // Prepare IMU message
+        rclcpp::Time sensor_time = getReadingTime(quaternion_arr[1]);
+        if (sensor_time > am::ClockNow() + rclcpp::Duration(0,4000000)) {
+            ROS_DEBUG_STREAM("Sensor time too far in future. Dropping.");
+            return -1;
         }
 
-        q = q_init*q;
-        q = q.normalize();
+        tf2::Quaternion q(quaternion_arr[2], quaternion_arr[3], quaternion_arr[4], quaternion_arr[5]);
+        if(tared_)
+        {
+            static tf2::Quaternion q_init;
+            static bool first_run = true;
+
+            if(first_run)
+            {
+                q_init = tf2::Quaternion(quaternion_arr[2], quaternion_arr[3], quaternion_arr[4], quaternion_arr[5]);
+
+                q_init = q_init.inverse();
+
+                first_run = false;
+            }
+
+            q = q_init*q;
+            q = q.normalize();
+        }
+
+        imu_msg.header.stamp           = sensor_time;
+        
+        imu_msg.header.frame_id        = m_frame;
+        imu_msg.orientation.x          = q.x();
+        imu_msg.orientation.y          = q.y();
+        imu_msg.orientation.z          = q.z();
+        imu_msg.orientation.w          = q.w();
+
+        imu_msg.angular_velocity.x     = gyro_arr[0];
+        imu_msg.angular_velocity.y     = gyro_arr[1];
+        imu_msg.angular_velocity.z     = gyro_arr[2];
+
+        imu_msg.linear_acceleration.x  = 9.8*accel_arr[0];
+        imu_msg.linear_acceleration.y  = 9.8*accel_arr[1];
+        imu_msg.linear_acceleration.z  = 9.8*accel_arr[2];
+
+        if (debug_)
+        {
+            ROS_WARN_STREAM_THROTTLE(1.0, "Publishing IMU. ts: " << rclcpp::Time(imu_msg.header.stamp).seconds());
+        }
     }
-
-	imu_msg.header.stamp           = sensor_time;
-	
-	imu_msg.header.frame_id        = m_frame;
-	imu_msg.orientation.x          = q.x();
-	imu_msg.orientation.y          = q.y();
-	imu_msg.orientation.z          = q.z();
-	imu_msg.orientation.w          = q.w();
-
-	imu_msg.angular_velocity.x     = gyro_arr[0];
-	imu_msg.angular_velocity.y     = gyro_arr[1];
-	imu_msg.angular_velocity.z     = gyro_arr[2];
-
-	imu_msg.linear_acceleration.x  = 9.8*accel_arr[0];
-	imu_msg.linear_acceleration.y  = 9.8*accel_arr[1];
-	imu_msg.linear_acceleration.z  = 9.8*accel_arr[2];
-
-    if (debug_)
-        ROS_WARN_STREAM_THROTTLE(1.0, "Publishing IMU. ts: " << rclcpp::Time(imu_msg.header.stamp).seconds());
-
-	return 0;
+    catch(const SerialException& e)
+    {
+        ROS_ERROR("%s", e.what());
+        return -1;
+    }
+    
+    return 0;
 }
 
 void Y3SpaceDriver::getParams()
