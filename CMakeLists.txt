@@ -46,7 +46,8 @@ include_directories(
 add_executable(y3space_driver
                 src/y3space_driver/SerialInterface.cpp
                 src/y3space_driver/Y3SpaceDriver.cpp
-                src/y3space_driver/driver_node.cpp)
+                src/y3space_driver/yost_main.cpp
+                src/y3space_driver/yost_node.cpp)
 ament_target_dependencies(y3space_driver ${dependencies})
 
 

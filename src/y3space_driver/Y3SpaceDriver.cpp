@@ -3,13 +3,26 @@
 #include <y3space_driver/Y3SpaceDriver.h>
 
 
+namespace am
+{
+
 const std::string Y3SpaceDriver::logger = "[ Y3SpaceDriver ] ";
 const std::string Y3SpaceDriver::MODE_ABSOLUTE = "absolute";
 const std::string Y3SpaceDriver::MODE_RELATIVE = "relative";
 
-Y3SpaceDriver::Y3SpaceDriver(): SerialInterface()
+Y3SpaceDriver::Y3SpaceDriver(std::shared_ptr<YostStats> stats): SerialInterface(), yost_stats_(stats)
 {
-	getParams();
+	
+}
+
+std::shared_ptr<YostStats> Y3SpaceDriver::getStats()
+{
+    return yost_stats_;
+}
+
+void Y3SpaceDriver::initialize()
+{
+    getParams();
 
     this->initSerial(m_port, m_baudrate, m_timeout);
 
@@ -25,6 +38,24 @@ Y3SpaceDriver::Y3SpaceDriver(): SerialInterface()
     pub_timer_ = am::Node::node->create_wall_timer(am::toDuration(0.001), std::bind(&Y3SpaceDriver::pubTimerCB, this));
 }
 
+bool Y3SpaceDriver::onConfigure()
+{
+    //return AMLifeCycle::onConfigure();
+    return true;
+}
+
+
+void Y3SpaceDriver::heartbeatCB()
+{
+
+
+}
+
+bool Y3SpaceDriver::onCleanup()
+{
+    //return AMLifeCycle::onCleanup();
+    return true;
+}
 
 void Y3SpaceDriver::pubTimerCB()
 {
@@ -37,6 +68,8 @@ void Y3SpaceDriver::pubTimerCB()
     if(getImuMessage(imu_msg) >= 0)
     {
         m_imuPub->publish(imu_msg);
+        yost_stats_->imu_pub++;
+        //yost_stats_->statStatus
         return;
     }
     //ROS_WARN("Could not retrieve an imu message");
@@ -527,3 +560,4 @@ double Y3SpaceDriver::getDegree(double rad)
 	return rad * 180.0 / M_PI;
 }
 
+}

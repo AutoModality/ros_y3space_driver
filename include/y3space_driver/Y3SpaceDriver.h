@@ -12,8 +12,10 @@
 #include <ctime>
 #include <math.h>
 #include <am_utils/am_ros2_utility.h>
+#include <y3space_driver/yost_stats.h>
 
-
+namespace am
+{
 //! \brief Yost Labs 3-Space ROS Driver Class
 class Y3SpaceDriver: public SerialInterface
 {
@@ -21,11 +23,18 @@ public:
     //!
     //! Constructor
     //!
-    Y3SpaceDriver();
+    Y3SpaceDriver(std::shared_ptr<YostStats> stats);
     //!
     //! Destructor
     //!
     ~Y3SpaceDriver();
+
+    void initialize();
+
+    /**
+     * 
+     */
+    std::shared_ptr<YostStats> getStats();
     //!
     //! \brief run: runs system
     //!
@@ -75,6 +84,12 @@ public:
 
     void initDevice();
 
+    bool onConfigure();
+
+    void heartbeatCB();
+
+    bool onCleanup();
+
 private:
     // ROS Member Variables
    
@@ -83,7 +98,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr m_rpyPub; ///<Publisher for IMU RPY messages>
     rclcpp::TimerBase::SharedPtr pub_timer_;
 
-    
+    std::shared_ptr<YostStats> yost_stats_ = nullptr;
 
     std::string m_port = "/dev/ttyACM0";
     std::string m_mode = "relative";
@@ -293,4 +308,5 @@ private:
     static constexpr auto RESTORE_FACTORY_SETTINGS    = ":224\n";
     static constexpr auto SOFTWARE_RESET              = ":226\n";
 };
+}
 #endif //_Y3SPACE_DRIVER_H
