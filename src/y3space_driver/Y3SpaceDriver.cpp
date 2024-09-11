@@ -166,7 +166,7 @@ int Y3SpaceDriver::getImuMessage(sensor_msgs::msg::Imu &imu_msg)
     }
     catch(const SerialException& e)
     {
-        ROS_ERROR("%s", e.what());
+        ROS_ERROR_THROTTLE(1.0, "COULD NOT READ SERIAL: %s", e.what());
         return -1;
     }
     
