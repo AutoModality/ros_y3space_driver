@@ -77,6 +77,8 @@ public:
 
     void flushSerial();
 
+    bool is_open();
+
 private:
     //!
     //! name of the devices port

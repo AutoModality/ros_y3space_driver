@@ -26,6 +26,11 @@ SerialInterface::~SerialInterface()
     }
 }
 
+bool SerialInterface::is_open()
+{
+	return m_connection->isOpen();
+}
+
 void SerialInterface::initSerial(std::string port, int baudrate, int timeout)
 {
 	m_logger = "[ Y3SSerialInterface ] ";
