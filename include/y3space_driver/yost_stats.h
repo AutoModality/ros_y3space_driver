@@ -14,7 +14,7 @@ class YostStats
 {
 public:
     AMStatStatus statStatus = AMStatStatus("ss", "AMStatStatus");
-    AMStatReset imu_pub = AMStatReset("imu_freq", "IMU publish Hz", 250, 275, 350, 375);
+    AMStatReset imu_pub = AMStatReset("imu_freq", "IMU publish Hz", 100, 150, 350, 375);
 
     YostStats(AMStatList &list)
     {
