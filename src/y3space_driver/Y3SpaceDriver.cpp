@@ -12,7 +12,7 @@ const std::string Y3SpaceDriver::MODE_RELATIVE = "relative";
 
 Y3SpaceDriver::Y3SpaceDriver(std::shared_ptr<YostStats> stats): SerialInterface(), yost_stats_(stats)
 {
-	
+	imu_delta_ = std::make_shared<am::ImuDelta>(true, true);
 }
 
 std::shared_ptr<YostStats> Y3SpaceDriver::getStats()
@@ -72,9 +72,10 @@ void Y3SpaceDriver::statCB(const std_msgs::msg::Int32::SharedPtr msg)
 
 void Y3SpaceDriver::pubTimerCB()
 {
-    sensor_msgs::msg::Imu imu_msg;
-    if(getImuMessage(imu_msg) >= 0)
+    sensor_msgs::msg::Imu raw_imu, imu_msg;
+    if(getImuMessage(raw_imu) >= 0)
     {
+        imu_delta_->updateImu(raw_imu, imu_msg);
         yost_stats_->imu_pub++;
         if(m_imuPub->get_subscription_count() == 0)
         {

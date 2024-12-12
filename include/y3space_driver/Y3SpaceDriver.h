@@ -14,6 +14,7 @@
 #include <am_utils/am_ros2_utility.h>
 #include <y3space_driver/yost_stats.h>
 #include <std_msgs/msg/int32.hpp>
+#include <am_utils/imu_delta_class.h>
 
 namespace am
 {
@@ -93,6 +94,8 @@ public:
 
 private:
     // ROS Member Variables
+
+    std::shared_ptr<am::ImuDelta> imu_delta_;
    
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr m_imuPub;  ///< Publisher for IMU messages
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr m_tempPub; ///< Publisher for temperature messages
